@@ -1,8 +1,12 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { IPC_CHANNELS, type AppApi } from '../shared/ipc'
 
 // Custom APIs for renderer
-const api = {}
+const api: AppApi = {
+  getAppMeta: () => ipcRenderer.invoke(IPC_CHANNELS.appGetMeta),
+  ping: () => ipcRenderer.invoke(IPC_CHANNELS.appPing)
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
