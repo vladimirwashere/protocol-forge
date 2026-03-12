@@ -15,6 +15,8 @@ import {
   listServerProfiles,
   upsertServerProfile
 } from './persistence/serverProfilesRepo'
+import { sessionManager } from './mcp/session-manager'
+import type { SessionConnectInput, SessionDisconnectInput, SessionStatusInput } from '../shared/ipc'
 
 function createWindow(): void {
   // Create the browser window.
@@ -93,6 +95,18 @@ app.whenReady().then(() => {
     return deleteServerProfile(input)
   })
 
+  ipcMain.handle(IPC_CHANNELS.mcpSessionConnect, (_, input: SessionConnectInput) => {
+    return sessionManager.connect(input)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpSessionDisconnect, (_, input: SessionDisconnectInput) => {
+    return sessionManager.disconnect(input)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpSessionStatus, (_, input: SessionStatusInput) => {
+    return sessionManager.getStatus(input.sessionId)
+  })
+
   createWindow()
 
   app.on('activate', function () {
@@ -112,11 +126,15 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  void sessionManager.shutdown()
   ipcMain.removeHandler(IPC_CHANNELS.appGetMeta)
   ipcMain.removeHandler(IPC_CHANNELS.appPing)
   ipcMain.removeHandler(IPC_CHANNELS.serverProfilesList)
   ipcMain.removeHandler(IPC_CHANNELS.serverProfilesUpsert)
   ipcMain.removeHandler(IPC_CHANNELS.serverProfilesDelete)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSessionConnect)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSessionDisconnect)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSessionStatus)
 })
 
 // In this file you can include the rest of your app's specific main process

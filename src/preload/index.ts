@@ -8,7 +8,10 @@ const api: AppApi = {
   ping: () => ipcRenderer.invoke(IPC_CHANNELS.appPing),
   listServerProfiles: () => ipcRenderer.invoke(IPC_CHANNELS.serverProfilesList),
   upsertServerProfile: (input) => ipcRenderer.invoke(IPC_CHANNELS.serverProfilesUpsert, input),
-  deleteServerProfile: (input) => ipcRenderer.invoke(IPC_CHANNELS.serverProfilesDelete, input)
+  deleteServerProfile: (input) => ipcRenderer.invoke(IPC_CHANNELS.serverProfilesDelete, input),
+  connectSession: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionConnect, input),
+  disconnectSession: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionDisconnect, input),
+  getSessionStatus: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionStatus, input)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

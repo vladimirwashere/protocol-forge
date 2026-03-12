@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ServerProfile } from '../../shared/ipc'
+import type { ServerProfile, SessionStatus } from '../../shared/ipc'
 
 function App(): React.JSX.Element {
   const [metaText, setMetaText] = useState('Loading runtime metadata...')
@@ -9,6 +9,8 @@ function App(): React.JSX.Element {
   const [argsRaw, setArgsRaw] = useState('')
   const [cwd, setCwd] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
 
   const refreshProfiles = async (): Promise<void> => {
     const items = await window.api.listServerProfiles()
@@ -79,6 +81,42 @@ function App(): React.JSX.Element {
     await refreshProfiles()
   }
 
+  const handleConnectProfile = async (profile: ServerProfile): Promise<void> => {
+    setSessionError(null)
+
+    try {
+      const connected = await window.api.connectSession({
+        transport: 'stdio',
+        stdio: {
+          command: profile.command,
+          args: profile.args,
+          cwd: profile.cwd
+        }
+      })
+
+      const status = await window.api.getSessionStatus({ sessionId: connected.sessionId })
+      setSessionStatus(status)
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : 'Failed to connect')
+    }
+  }
+
+  const handleDisconnectSession = async (): Promise<void> => {
+    if (!sessionStatus) {
+      return
+    }
+
+    setSessionError(null)
+
+    try {
+      await window.api.disconnectSession({ sessionId: sessionStatus.sessionId })
+      const status = await window.api.getSessionStatus({ sessionId: sessionStatus.sessionId })
+      setSessionStatus(status)
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : 'Failed to disconnect')
+    }
+  }
+
   return (
     <div className="h-screen bg-slate-950 text-slate-100">
       <div className="grid h-full grid-rows-[1fr_220px]">
@@ -143,6 +181,12 @@ function App(): React.JSX.Element {
                     >
                       Delete
                     </button>
+                    <button
+                      onClick={() => handleConnectProfile(profile)}
+                      className="mt-2 ml-2 rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-900"
+                    >
+                      Connect
+                    </button>
                   </div>
                 ))
               )}
@@ -163,7 +207,22 @@ function App(): React.JSX.Element {
 
         <section className="border-t border-slate-800 bg-slate-950/80 p-4">
           <h3 className="text-sm font-medium text-slate-300">Protocol Inspector</h3>
-          <p className="mt-2 text-sm text-slate-500">No session traffic yet.</p>
+          {sessionStatus ? (
+            <div className="mt-2 space-y-1 text-sm text-slate-400">
+              <p>Session: {sessionStatus.sessionId}</p>
+              <p>State: {sessionStatus.state}</p>
+              <p>Messages: {sessionStatus.messageCount}</p>
+              <button
+                onClick={handleDisconnectSession}
+                className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+              >
+                Disconnect Active Session
+              </button>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-slate-500">No session traffic yet.</p>
+          )}
+          {sessionError ? <p className="mt-2 text-xs text-rose-400">{sessionError}</p> : null}
         </section>
       </div>
     </div>
