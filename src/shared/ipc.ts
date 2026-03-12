@@ -6,7 +6,8 @@ export const IPC_CHANNELS = {
   serverProfilesDelete: 'server-profiles:delete',
   mcpSessionConnect: 'mcp-session:connect',
   mcpSessionDisconnect: 'mcp-session:disconnect',
-  mcpSessionStatus: 'mcp-session:status'
+  mcpSessionStatus: 'mcp-session:status',
+  mcpSessionMessages: 'mcp-session:messages'
 } as const
 
 export type AppMeta = {
@@ -85,6 +86,21 @@ export type SessionStatusInput = {
   sessionId: string
 }
 
+export type SessionMessageDirection = 'outbound' | 'inbound'
+
+export type SessionMessage = {
+  id: number
+  sessionId: string
+  direction: SessionMessageDirection
+  payload: unknown
+  createdAt: string
+}
+
+export type SessionMessagesInput = {
+  sessionId: string
+  limit?: number
+}
+
 export type AppApi = {
   getAppMeta: () => Promise<AppMeta>
   ping: () => Promise<PingResponse>
@@ -94,4 +110,5 @@ export type AppApi = {
   connectSession: (input: SessionConnectInput) => Promise<SessionConnectResponse>
   disconnectSession: (input: SessionDisconnectInput) => Promise<{ ok: true }>
   getSessionStatus: (input: SessionStatusInput) => Promise<SessionStatus>
+  getSessionMessages: (input: SessionMessagesInput) => Promise<SessionMessage[]>
 }

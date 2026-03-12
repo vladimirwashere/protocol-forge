@@ -12,6 +12,7 @@ import type {
 } from '../../shared/ipc'
 import {
   countSessionMessages,
+  listSessionMessages,
   getSessionRecord,
   insertSessionMessage,
   insertSessionRecord,
@@ -201,6 +202,18 @@ export class SessionManager {
         }
       })
     )
+  }
+
+  getMessages(sessionId: string, limit = 100): ReturnType<typeof listSessionMessages> {
+    const runtime = this.sessions.get(sessionId)
+    if (!runtime) {
+      const persisted = getSessionRecord(sessionId)
+      if (!persisted) {
+        throw new AppError('SESSION_NOT_FOUND', `Session ${sessionId} was not found`)
+      }
+    }
+
+    return listSessionMessages(sessionId, limit)
   }
 
   private captureMessage(

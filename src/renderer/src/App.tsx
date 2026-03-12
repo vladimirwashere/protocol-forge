@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { ServerProfile, SessionStatus } from '../../shared/ipc'
+import { useCallback, useEffect, useState } from 'react'
+import type { ServerProfile, SessionMessage, SessionStatus } from '../../shared/ipc'
 
 function App(): React.JSX.Element {
   const [metaText, setMetaText] = useState('Loading runtime metadata...')
@@ -10,6 +10,7 @@ function App(): React.JSX.Element {
   const [cwd, setCwd] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null)
+  const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([])
   const [sessionError, setSessionError] = useState<string | null>(null)
 
   const refreshProfiles = async (): Promise<void> => {
@@ -96,6 +97,11 @@ function App(): React.JSX.Element {
 
       const status = await window.api.getSessionStatus({ sessionId: connected.sessionId })
       setSessionStatus(status)
+      const messages = await window.api.getSessionMessages({
+        sessionId: connected.sessionId,
+        limit: 100
+      })
+      setSessionMessages(messages)
     } catch (error) {
       setSessionError(error instanceof Error ? error.message : 'Failed to connect')
     }
@@ -112,10 +118,51 @@ function App(): React.JSX.Element {
       await window.api.disconnectSession({ sessionId: sessionStatus.sessionId })
       const status = await window.api.getSessionStatus({ sessionId: sessionStatus.sessionId })
       setSessionStatus(status)
+      const messages = await window.api.getSessionMessages({
+        sessionId: sessionStatus.sessionId,
+        limit: 100
+      })
+      setSessionMessages(messages)
     } catch (error) {
       setSessionError(error instanceof Error ? error.message : 'Failed to disconnect')
     }
   }
+
+  const sessionId = sessionStatus?.sessionId
+
+  const refreshSessionMessages = useCallback(async (): Promise<void> => {
+    if (!sessionId) {
+      setSessionMessages([])
+      return
+    }
+
+    const status = await window.api.getSessionStatus({ sessionId })
+    setSessionStatus(status)
+
+    const messages = await window.api.getSessionMessages({
+      sessionId,
+      limit: 100
+    })
+    setSessionMessages(messages)
+  }, [sessionId])
+
+  useEffect(() => {
+    if (
+      !sessionStatus ||
+      sessionStatus.state === 'disconnected' ||
+      sessionStatus.state === 'error'
+    ) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshSessionMessages()
+    }, 1000)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [refreshSessionMessages, sessionStatus])
 
   return (
     <div className="h-screen bg-slate-950 text-slate-100">
@@ -213,11 +260,45 @@ function App(): React.JSX.Element {
               <p>State: {sessionStatus.state}</p>
               <p>Messages: {sessionStatus.messageCount}</p>
               <button
+                onClick={refreshSessionMessages}
+                className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+              >
+                Refresh Messages
+              </button>
+              <button
                 onClick={handleDisconnectSession}
                 className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
               >
                 Disconnect Active Session
               </button>
+              <div className="mt-3 max-h-40 space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2">
+                {sessionMessages.length === 0 ? (
+                  <p className="text-xs text-slate-500">No captured messages yet.</p>
+                ) : (
+                  sessionMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className="rounded border border-slate-800 bg-slate-900/50 p-2"
+                    >
+                      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.08em]">
+                        <span
+                          className={
+                            message.direction === 'outbound' ? 'text-emerald-400' : 'text-sky-400'
+                          }
+                        >
+                          {message.direction}
+                        </span>
+                        <span className="text-slate-500">
+                          {new Date(message.createdAt).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <pre className="mt-2 overflow-x-auto text-xs text-slate-300">
+                        {JSON.stringify(message.payload, null, 2)}
+                      </pre>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           ) : (
             <p className="mt-2 text-sm text-slate-500">No session traffic yet.</p>

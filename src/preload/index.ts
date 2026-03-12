@@ -11,7 +11,8 @@ const api: AppApi = {
   deleteServerProfile: (input) => ipcRenderer.invoke(IPC_CHANNELS.serverProfilesDelete, input),
   connectSession: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionConnect, input),
   disconnectSession: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionDisconnect, input),
-  getSessionStatus: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionStatus, input)
+  getSessionStatus: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionStatus, input),
+  getSessionMessages: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionMessages, input)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -26,6 +26,22 @@ export type SessionRecord = {
   disconnectedAt: string | null
 }
 
+type MessageRow = {
+  id: number
+  session_id: string
+  direction: 'outbound' | 'inbound'
+  payload_json: string
+  created_at: string
+}
+
+export type SessionMessageRecord = {
+  id: number
+  sessionId: string
+  direction: 'outbound' | 'inbound'
+  payload: unknown
+  createdAt: string
+}
+
 function mapSessionRow(row: SessionRow): SessionRecord {
   return {
     id: row.id,
@@ -146,4 +162,39 @@ export function countSessionMessages(sessionId: string): number {
   }
 
   return row.count
+}
+
+function parsePayload(payloadJson: string): unknown {
+  try {
+    return JSON.parse(payloadJson)
+  } catch {
+    return payloadJson
+  }
+}
+
+export function listSessionMessages(sessionId: string, limit = 100): SessionMessageRecord[] {
+  const db = getDatabase()
+
+  const rows = db
+    .prepare(
+      `
+      SELECT id, session_id, direction, payload_json, created_at
+      FROM messages
+      WHERE session_id = @sessionId
+      ORDER BY id DESC
+      LIMIT @limit
+      `
+    )
+    .all({
+      sessionId,
+      limit: Math.max(1, Math.min(500, Math.floor(limit)))
+    }) as MessageRow[]
+
+  return rows.map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    direction: row.direction,
+    payload: parsePayload(row.payload_json),
+    createdAt: row.created_at
+  }))
 }
