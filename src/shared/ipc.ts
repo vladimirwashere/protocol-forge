@@ -3,7 +3,10 @@ export const IPC_CHANNELS = {
   appPing: 'app:ping',
   serverProfilesList: 'server-profiles:list',
   serverProfilesUpsert: 'server-profiles:upsert',
-  serverProfilesDelete: 'server-profiles:delete'
+  serverProfilesDelete: 'server-profiles:delete',
+  mcpSessionConnect: 'mcp-session:connect',
+  mcpSessionDisconnect: 'mcp-session:disconnect',
+  mcpSessionStatus: 'mcp-session:status'
 } as const
 
 export type AppMeta = {
@@ -39,10 +42,56 @@ export type DeleteServerProfileInput = {
   id: string
 }
 
+export type SessionState =
+  | 'connecting'
+  | 'initializing'
+  | 'ready'
+  | 'disconnecting'
+  | 'disconnected'
+  | 'error'
+
+export type StdioConnectInput = {
+  command: string
+  args: string[]
+  cwd?: string
+  env?: Record<string, string>
+}
+
+export type SessionConnectInput = {
+  transport: 'stdio'
+  stdio: StdioConnectInput
+}
+
+export type SessionConnectResponse = {
+  sessionId: string
+  state: SessionState
+}
+
+export type SessionDisconnectInput = {
+  sessionId: string
+}
+
+export type SessionStatus = {
+  sessionId: string
+  state: SessionState
+  transport: 'stdio'
+  connectedAt: string
+  disconnectedAt?: string
+  error?: string
+  messageCount: number
+}
+
+export type SessionStatusInput = {
+  sessionId: string
+}
+
 export type AppApi = {
   getAppMeta: () => Promise<AppMeta>
   ping: () => Promise<PingResponse>
   listServerProfiles: () => Promise<ServerProfile[]>
   upsertServerProfile: (input: UpsertServerProfileInput) => Promise<ServerProfile>
   deleteServerProfile: (input: DeleteServerProfileInput) => Promise<{ ok: true }>
+  connectSession: (input: SessionConnectInput) => Promise<SessionConnectResponse>
+  disconnectSession: (input: SessionDisconnectInput) => Promise<{ ok: true }>
+  getSessionStatus: (input: SessionStatusInput) => Promise<SessionStatus>
 }
