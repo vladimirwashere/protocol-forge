@@ -7,7 +7,8 @@ export const IPC_CHANNELS = {
   mcpSessionConnect: 'mcp-session:connect',
   mcpSessionDisconnect: 'mcp-session:disconnect',
   mcpSessionStatus: 'mcp-session:status',
-  mcpSessionMessages: 'mcp-session:messages'
+  mcpSessionMessages: 'mcp-session:messages',
+  mcpSessionList: 'mcp-session:list'
 } as const
 
 export type AppMeta = {
@@ -101,6 +102,20 @@ export type SessionMessagesInput = {
   limit?: number
 }
 
+export type SessionSummary = {
+  sessionId: string
+  state: SessionState
+  transport: 'stdio'
+  connectedAt: string
+  disconnectedAt?: string
+  error?: string
+  messageCount: number
+}
+
+export type SessionListInput = {
+  limit?: number
+}
+
 export type AppApi = {
   getAppMeta: () => Promise<AppMeta>
   ping: () => Promise<PingResponse>
@@ -111,4 +126,5 @@ export type AppApi = {
   disconnectSession: (input: SessionDisconnectInput) => Promise<{ ok: true }>
   getSessionStatus: (input: SessionStatusInput) => Promise<SessionStatus>
   getSessionMessages: (input: SessionMessagesInput) => Promise<SessionMessage[]>
+  listSessions: (input?: SessionListInput) => Promise<SessionSummary[]>
 }

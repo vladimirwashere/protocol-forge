@@ -9,7 +9,8 @@ import {
   type PingResponse,
   type DeleteServerProfileInput,
   type UpsertServerProfileInput,
-  type SessionMessagesInput
+  type SessionMessagesInput,
+  type SessionListInput
 } from '../shared/ipc'
 import {
   deleteServerProfile,
@@ -112,6 +113,10 @@ app.whenReady().then(() => {
     return sessionManager.getMessages(input.sessionId, input.limit)
   })
 
+  ipcMain.handle(IPC_CHANNELS.mcpSessionList, (_, input?: SessionListInput) => {
+    return sessionManager.listSessions(input?.limit)
+  })
+
   createWindow()
 
   app.on('activate', function () {
@@ -141,6 +146,7 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionDisconnect)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionStatus)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionMessages)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSessionList)
 })
 
 // In this file you can include the rest of your app's specific main process

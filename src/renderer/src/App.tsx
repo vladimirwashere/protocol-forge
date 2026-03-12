@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ServerProfile, SessionMessage, SessionStatus } from '../../shared/ipc'
+import type { ServerProfile, SessionMessage, SessionStatus, SessionSummary } from '../../shared/ipc'
 
 function App(): React.JSX.Element {
   const [metaText, setMetaText] = useState('Loading runtime metadata...')
@@ -11,12 +11,28 @@ function App(): React.JSX.Element {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null)
   const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([])
+  const [sessionHistory, setSessionHistory] = useState<SessionSummary[]>([])
   const [sessionError, setSessionError] = useState<string | null>(null)
 
   const refreshProfiles = async (): Promise<void> => {
     const items = await window.api.listServerProfiles()
     setProfiles(items)
   }
+
+  const refreshSessionHistory = useCallback(async (): Promise<void> => {
+    const sessions = await window.api.listSessions({ limit: 20 })
+    setSessionHistory(sessions)
+  }, [])
+
+  const inspectSession = useCallback(async (selectedSessionId: string): Promise<void> => {
+    const [status, messages] = await Promise.all([
+      window.api.getSessionStatus({ sessionId: selectedSessionId }),
+      window.api.getSessionMessages({ sessionId: selectedSessionId, limit: 100 })
+    ])
+
+    setSessionStatus(status)
+    setSessionMessages(messages)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -33,7 +49,30 @@ function App(): React.JSX.Element {
           return
         }
 
+        const sessions = await window.api.listSessions({ limit: 20 })
+        if (!mounted) {
+          return
+        }
+
         setProfiles(items)
+        setSessionHistory(sessions)
+        if (sessions.length > 0) {
+          const latestSession = sessions.at(0)
+          if (!latestSession) {
+            return
+          }
+
+          const [status, messages] = await Promise.all([
+            window.api.getSessionStatus({ sessionId: latestSession.sessionId }),
+            window.api.getSessionMessages({ sessionId: latestSession.sessionId, limit: 100 })
+          ])
+
+          if (mounted) {
+            setSessionStatus(status)
+            setSessionMessages(messages)
+          }
+        }
+
         setMetaText(
           `${meta.name} v${meta.version} on ${meta.platform} (ipc ok: ${ping.ok ? 'yes' : 'no'})`
         )
@@ -102,6 +141,7 @@ function App(): React.JSX.Element {
         limit: 100
       })
       setSessionMessages(messages)
+      await refreshSessionHistory()
     } catch (error) {
       setSessionError(error instanceof Error ? error.message : 'Failed to connect')
     }
@@ -123,6 +163,7 @@ function App(): React.JSX.Element {
         limit: 100
       })
       setSessionMessages(messages)
+      await refreshSessionHistory()
     } catch (error) {
       setSessionError(error instanceof Error ? error.message : 'Failed to disconnect')
     }
@@ -144,6 +185,32 @@ function App(): React.JSX.Element {
       limit: 100
     })
     setSessionMessages(messages)
+
+    setSessionHistory((previous) =>
+      previous.map((session) => {
+        if (session.sessionId !== status.sessionId) {
+          return session
+        }
+
+        const updated: SessionSummary = {
+          sessionId: status.sessionId,
+          state: status.state,
+          transport: status.transport,
+          connectedAt: status.connectedAt,
+          messageCount: status.messageCount
+        }
+
+        if (status.disconnectedAt !== undefined) {
+          updated.disconnectedAt = status.disconnectedAt
+        }
+
+        if (status.error !== undefined) {
+          updated.error = status.error
+        }
+
+        return updated
+      })
+    )
   }, [sessionId])
 
   useEffect(() => {
@@ -156,7 +223,9 @@ function App(): React.JSX.Element {
     }
 
     const timer = window.setInterval(() => {
-      void refreshSessionMessages()
+      void refreshSessionMessages().catch((error: unknown) => {
+        setSessionError(error instanceof Error ? error.message : 'Failed to refresh session')
+      })
     }, 1000)
 
     return () => {
@@ -260,6 +329,14 @@ function App(): React.JSX.Element {
               <p>State: {sessionStatus.state}</p>
               <p>Messages: {sessionStatus.messageCount}</p>
               <button
+                onClick={() => {
+                  void refreshSessionHistory()
+                }}
+                className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+              >
+                Refresh Sessions
+              </button>
+              <button
                 onClick={refreshSessionMessages}
                 className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
               >
@@ -296,6 +373,30 @@ function App(): React.JSX.Element {
                         {JSON.stringify(message.payload, null, 2)}
                       </pre>
                     </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-3 max-h-40 space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2">
+                {sessionHistory.length === 0 ? (
+                  <p className="text-xs text-slate-500">No recent sessions.</p>
+                ) : (
+                  sessionHistory.map((session) => (
+                    <button
+                      key={session.sessionId}
+                      onClick={() => {
+                        void inspectSession(session.sessionId)
+                      }}
+                      className={`w-full rounded border p-2 text-left text-xs ${
+                        sessionStatus.sessionId === session.sessionId
+                          ? 'border-slate-500 bg-slate-800/70'
+                          : 'border-slate-800 bg-slate-900/40'
+                      }`}
+                    >
+                      <p className="font-medium text-slate-300">{session.sessionId}</p>
+                      <p className="mt-1 text-slate-500">
+                        {session.state} • {session.messageCount} messages
+                      </p>
+                    </button>
                   ))
                 )}
               </div>

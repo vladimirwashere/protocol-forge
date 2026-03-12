@@ -8,10 +8,12 @@ import type {
   SessionConnectResponse,
   SessionDisconnectInput,
   SessionState,
+  SessionSummary,
   SessionStatus
 } from '../../shared/ipc'
 import {
   countSessionMessages,
+  listSessionSummaries,
   listSessionMessages,
   getSessionRecord,
   insertSessionMessage,
@@ -214,6 +216,28 @@ export class SessionManager {
     }
 
     return listSessionMessages(sessionId, limit)
+  }
+
+  listSessions(limit = 25): SessionSummary[] {
+    return listSessionSummaries(limit).map((session) => {
+      const summary: SessionSummary = {
+        sessionId: session.sessionId,
+        state: session.state as SessionState,
+        transport: session.transport,
+        connectedAt: session.connectedAt,
+        messageCount: session.messageCount
+      }
+
+      if (session.disconnectedAt !== null) {
+        summary.disconnectedAt = session.disconnectedAt
+      }
+
+      if (session.error !== null) {
+        summary.error = session.error
+      }
+
+      return summary
+    })
   }
 
   private captureMessage(

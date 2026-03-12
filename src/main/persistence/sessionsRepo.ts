@@ -26,6 +26,26 @@ export type SessionRecord = {
   disconnectedAt: string | null
 }
 
+type SessionSummaryRow = {
+  id: string
+  transport_type: 'stdio'
+  status: string
+  error_text: string | null
+  connected_at: string
+  disconnected_at: string | null
+  message_count: number
+}
+
+export type SessionSummaryRecord = {
+  sessionId: string
+  transport: 'stdio'
+  state: string
+  error: string | null
+  connectedAt: string
+  disconnectedAt: string | null
+  messageCount: number
+}
+
 type MessageRow = {
   id: number
   session_id: string
@@ -196,5 +216,41 @@ export function listSessionMessages(sessionId: string, limit = 100): SessionMess
     direction: row.direction,
     payload: parsePayload(row.payload_json),
     createdAt: row.created_at
+  }))
+}
+
+export function listSessionSummaries(limit = 25): SessionSummaryRecord[] {
+  const db = getDatabase()
+
+  const rows = db
+    .prepare(
+      `
+      SELECT
+        s.id,
+        s.transport_type,
+        s.status,
+        s.error_text,
+        s.connected_at,
+        s.disconnected_at,
+        COUNT(m.id) AS message_count
+      FROM sessions s
+      LEFT JOIN messages m ON m.session_id = s.id
+      GROUP BY s.id
+      ORDER BY s.connected_at DESC
+      LIMIT @limit
+      `
+    )
+    .all({
+      limit: Math.max(1, Math.min(100, Math.floor(limit)))
+    }) as SessionSummaryRow[]
+
+  return rows.map((row) => ({
+    sessionId: row.id,
+    transport: row.transport_type,
+    state: row.status,
+    error: row.error_text,
+    connectedAt: row.connected_at,
+    disconnectedAt: row.disconnected_at,
+    messageCount: row.message_count
   }))
 }
