@@ -1,16 +1,14 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
+import { clampInspectorHeight } from './ui-store-utils'
+
 type UIStoreState = {
   metaText: string
   inspectorHeight: number
   setMetaText: (value: string) => void
   setInspectorHeight: (value: number) => void
   hydrateMeta: () => Promise<void>
-}
-
-const clampInspectorHeight = (value: number): number => {
-  return Math.max(160, Math.min(520, Math.round(value)))
 }
 
 export const useUIStore = create<UIStoreState>()(
