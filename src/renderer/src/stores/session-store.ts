@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import type { ServerProfile, SessionMessage, SessionStatus, SessionSummary } from '../../../shared/ipc'
+import type {
+  ServerProfile,
+  SessionMessage,
+  SessionStatus,
+  SessionSummary
+} from '../../../shared/ipc'
 
 type SessionStoreState = {
   sessionStatus: SessionStatus | null

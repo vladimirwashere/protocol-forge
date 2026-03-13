@@ -1,285 +1,60 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { ServerProfile, SessionMessage, SessionStatus, SessionSummary } from '../../shared/ipc'
-
-type ProfileTransport = 'stdio' | 'sse'
+import { useEffect } from 'react'
+import { useServerStore } from './stores/server-store'
+import { useSessionStore } from './stores/session-store'
+import { useUIStore } from './stores/ui-store'
 
 function App(): React.JSX.Element {
-  const [metaText, setMetaText] = useState('Loading runtime metadata...')
-  const [profiles, setProfiles] = useState<ServerProfile[]>([])
-  const [name, setName] = useState('')
-  const [profileTransport, setProfileTransport] = useState<ProfileTransport>('stdio')
-  const [command, setCommand] = useState('npx')
-  const [argsRaw, setArgsRaw] = useState('')
-  const [cwd, setCwd] = useState('')
-  const [sseUrl, setSseUrl] = useState('')
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null)
-  const [sessionMessages, setSessionMessages] = useState<SessionMessage[]>([])
-  const [sessionHistory, setSessionHistory] = useState<SessionSummary[]>([])
-  const [sessionError, setSessionError] = useState<string | null>(null)
+  const metaText = useUIStore((state) => state.metaText)
+  const hydrateMeta = useUIStore((state) => state.hydrateMeta)
 
-  const refreshProfiles = async (): Promise<void> => {
-    const items = await window.api.listServerProfiles()
-    setProfiles(items)
-  }
+  const profiles = useServerStore((state) => state.profiles)
+  const form = useServerStore((state) => state.form)
+  const saveError = useServerStore((state) => state.saveError)
+  const setFormField = useServerStore((state) => state.setFormField)
+  const refreshProfiles = useServerStore((state) => state.refreshProfiles)
+  const saveProfile = useServerStore((state) => state.saveProfile)
+  const deleteProfile = useServerStore((state) => state.deleteProfile)
 
-  const refreshSessionHistory = useCallback(async (): Promise<void> => {
-    const sessions = await window.api.listSessions({ limit: 20 })
-    setSessionHistory(sessions)
-  }, [])
-
-  const inspectSession = useCallback(async (selectedSessionId: string): Promise<void> => {
-    const [status, messages] = await Promise.all([
-      window.api.getSessionStatus({ sessionId: selectedSessionId }),
-      window.api.getSessionMessages({ sessionId: selectedSessionId, limit: 100 })
-    ])
-
-    setSessionStatus(status)
-    setSessionMessages(messages)
-  }, [])
+  const sessionStatus = useSessionStore((state) => state.sessionStatus)
+  const sessionMessages = useSessionStore((state) => state.sessionMessages)
+  const sessionHistory = useSessionStore((state) => state.sessionHistory)
+  const sessionError = useSessionStore((state) => state.sessionError)
+  const setSessionError = useSessionStore((state) => state.setSessionError)
+  const refreshSessionHistory = useSessionStore((state) => state.refreshSessionHistory)
+  const inspectSession = useSessionStore((state) => state.inspectSession)
+  const connectProfile = useSessionStore((state) => state.connectProfile)
+  const connectSseUrl = useSessionStore((state) => state.connectSseUrl)
+  const disconnectActiveSession = useSessionStore((state) => state.disconnectActiveSession)
+  const refreshActiveSessionMessages = useSessionStore(
+    (state) => state.refreshActiveSessionMessages
+  )
+  const hydrateSessionList = useSessionStore((state) => state.hydrateSessionList)
 
   useEffect(() => {
     let mounted = true
 
     const load = async (): Promise<void> => {
-      try {
-        const [meta, ping] = await Promise.all([window.api.getAppMeta(), window.api.ping()])
-        if (!mounted) {
-          return
-        }
+      await Promise.all([hydrateMeta(), refreshProfiles(), hydrateSessionList()])
 
-        const items = await window.api.listServerProfiles()
-        if (!mounted) {
-          return
-        }
-
-        const sessions = await window.api.listSessions({ limit: 20 })
-        if (!mounted) {
-          return
-        }
-
-        setProfiles(items)
-        setSessionHistory(sessions)
-        if (sessions.length > 0) {
-          const latestSession = sessions.at(0)
-          if (!latestSession) {
-            return
-          }
-
-          const [status, messages] = await Promise.all([
-            window.api.getSessionStatus({ sessionId: latestSession.sessionId }),
-            window.api.getSessionMessages({ sessionId: latestSession.sessionId, limit: 100 })
-          ])
-
-          if (mounted) {
-            setSessionStatus(status)
-            setSessionMessages(messages)
-          }
-        }
-
-        setMetaText(
-          `${meta.name} v${meta.version} on ${meta.platform} (ipc ok: ${ping.ok ? 'yes' : 'no'})`
-        )
-      } catch {
-        if (mounted) {
-          setMetaText('IPC unavailable')
-          setSaveError('Could not initialize profile storage')
-        }
+      if (!mounted) {
+        return
       }
     }
 
-    load()
+    void load().catch((error: unknown) => {
+      if (!mounted) {
+        return
+      }
+
+      setSessionError(
+        error instanceof Error ? error.message : 'Failed to initialize renderer state'
+      )
+    })
 
     return () => {
       mounted = false
     }
-  }, [])
-
-  const handleSaveProfile = async (): Promise<void> => {
-    setSaveError(null)
-
-    try {
-      const args = argsRaw
-        .split(' ')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-
-      if (profileTransport === 'stdio') {
-        await window.api.upsertServerProfile({
-          name,
-          transport: 'stdio',
-          command,
-          args,
-          cwd
-        })
-      } else {
-        await window.api.upsertServerProfile({
-          name,
-          transport: 'sse',
-          url: sseUrl
-        })
-      }
-
-      setName('')
-      setArgsRaw('')
-      setSseUrl('')
-
-      await refreshProfiles()
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Failed to save profile')
-    }
-  }
-
-  const handleDeleteProfile = async (id: string): Promise<void> => {
-    await window.api.deleteServerProfile({ id })
-    await refreshProfiles()
-  }
-
-  const handleConnectProfile = async (profile: ServerProfile): Promise<void> => {
-    setSessionError(null)
-
-    try {
-      const connected =
-        profile.transport === 'stdio'
-          ? await (() => {
-              const stdioInput: {
-                command: string
-                args: string[]
-                cwd?: string
-              } = {
-                command: profile.command ?? '',
-                args: profile.args ?? []
-              }
-
-              if (profile.cwd !== undefined) {
-                stdioInput.cwd = profile.cwd
-              }
-
-              return window.api.connectSession({
-                transport: 'stdio',
-                stdio: stdioInput
-              })
-            })()
-          : await (() => {
-              const sseInput: {
-                url: string
-                headers?: Record<string, string>
-              } = {
-                url: profile.url ?? ''
-              }
-
-              if (profile.headers !== undefined) {
-                sseInput.headers = profile.headers
-              }
-
-              return window.api.connectSession({
-                transport: 'sse',
-                sse: sseInput
-              })
-            })()
-
-      const status = await window.api.getSessionStatus({ sessionId: connected.sessionId })
-      setSessionStatus(status)
-      const messages = await window.api.getSessionMessages({
-        sessionId: connected.sessionId,
-        limit: 100
-      })
-      setSessionMessages(messages)
-      await refreshSessionHistory()
-    } catch (error) {
-      setSessionError(error instanceof Error ? error.message : 'Failed to connect')
-    }
-  }
-
-  const handleConnectSse = async (): Promise<void> => {
-    setSessionError(null)
-
-    try {
-      const connected = await window.api.connectSession({
-        transport: 'sse',
-        sse: {
-          url: sseUrl
-        }
-      })
-
-      const status = await window.api.getSessionStatus({ sessionId: connected.sessionId })
-      setSessionStatus(status)
-      const messages = await window.api.getSessionMessages({
-        sessionId: connected.sessionId,
-        limit: 100
-      })
-      setSessionMessages(messages)
-      await refreshSessionHistory()
-    } catch (error) {
-      setSessionError(error instanceof Error ? error.message : 'Failed to connect via SSE')
-    }
-  }
-
-  const handleDisconnectSession = async (): Promise<void> => {
-    if (!sessionStatus) {
-      return
-    }
-
-    setSessionError(null)
-
-    try {
-      await window.api.disconnectSession({ sessionId: sessionStatus.sessionId })
-      const status = await window.api.getSessionStatus({ sessionId: sessionStatus.sessionId })
-      setSessionStatus(status)
-      const messages = await window.api.getSessionMessages({
-        sessionId: sessionStatus.sessionId,
-        limit: 100
-      })
-      setSessionMessages(messages)
-      await refreshSessionHistory()
-    } catch (error) {
-      setSessionError(error instanceof Error ? error.message : 'Failed to disconnect')
-    }
-  }
-
-  const sessionId = sessionStatus?.sessionId
-
-  const refreshSessionMessages = useCallback(async (): Promise<void> => {
-    if (!sessionId) {
-      setSessionMessages([])
-      return
-    }
-
-    const status = await window.api.getSessionStatus({ sessionId })
-    setSessionStatus(status)
-
-    const messages = await window.api.getSessionMessages({
-      sessionId,
-      limit: 100
-    })
-    setSessionMessages(messages)
-
-    setSessionHistory((previous) =>
-      previous.map((session) => {
-        if (session.sessionId !== status.sessionId) {
-          return session
-        }
-
-        const updated: SessionSummary = {
-          sessionId: status.sessionId,
-          state: status.state,
-          transport: status.transport,
-          connectedAt: status.connectedAt,
-          messageCount: status.messageCount
-        }
-
-        if (status.disconnectedAt !== undefined) {
-          updated.disconnectedAt = status.disconnectedAt
-        }
-
-        if (status.error !== undefined) {
-          updated.error = status.error
-        }
-
-        return updated
-      })
-    )
-  }, [sessionId])
+  }, [hydrateMeta, refreshProfiles, hydrateSessionList, setSessionError])
 
   useEffect(() => {
     if (
@@ -291,7 +66,7 @@ function App(): React.JSX.Element {
     }
 
     const timer = window.setInterval(() => {
-      void refreshSessionMessages().catch((error: unknown) => {
+      void refreshActiveSessionMessages().catch((error: unknown) => {
         setSessionError(error instanceof Error ? error.message : 'Failed to refresh session')
       })
     }, 1000)
@@ -299,7 +74,7 @@ function App(): React.JSX.Element {
     return () => {
       window.clearInterval(timer)
     }
-  }, [refreshSessionMessages, sessionStatus])
+  }, [refreshActiveSessionMessages, sessionStatus, setSessionError])
 
   return (
     <div className="h-screen bg-slate-950 text-slate-100">
@@ -311,63 +86,69 @@ function App(): React.JSX.Element {
 
             <div className="mt-4 space-y-2 rounded border border-slate-800 bg-slate-950/60 p-3">
               <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                value={form.name}
+                onChange={(event) => setFormField('name', event.target.value)}
                 placeholder="Profile name"
                 className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
               />
               <select
-                value={profileTransport}
-                onChange={(event) => setProfileTransport(event.target.value as ProfileTransport)}
+                value={form.transport}
+                onChange={(event) =>
+                  setFormField('transport', event.target.value as 'stdio' | 'sse')
+                }
                 className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
               >
                 <option value="stdio">Stdio</option>
                 <option value="sse">SSE</option>
               </select>
-              {profileTransport === 'stdio' ? (
+              {form.transport === 'stdio' ? (
                 <>
                   <input
-                    value={command}
-                    onChange={(event) => setCommand(event.target.value)}
+                    value={form.command}
+                    onChange={(event) => setFormField('command', event.target.value)}
                     placeholder="Command"
                     className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
                   />
                   <input
-                    value={argsRaw}
-                    onChange={(event) => setArgsRaw(event.target.value)}
+                    value={form.argsRaw}
+                    onChange={(event) => setFormField('argsRaw', event.target.value)}
                     placeholder="Args (space separated)"
                     className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
                   />
                   <input
-                    value={cwd}
-                    onChange={(event) => setCwd(event.target.value)}
+                    value={form.cwd}
+                    onChange={(event) => setFormField('cwd', event.target.value)}
                     placeholder="Working directory"
                     className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
                   />
                 </>
               ) : (
                 <input
-                  value={sseUrl}
-                  onChange={(event) => setSseUrl(event.target.value)}
+                  value={form.sseUrl}
+                  onChange={(event) => setFormField('sseUrl', event.target.value)}
                   placeholder="SSE endpoint URL"
                   className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
                 />
               )}
               <button
-                onClick={handleSaveProfile}
+                onClick={() => {
+                  void saveProfile()
+                }}
                 className="w-full rounded bg-slate-200 px-2 py-1 text-sm font-medium text-slate-900"
               >
                 Save Profile
               </button>
               <div className="pt-2">
                 <input
-                  value={sseUrl}
-                  onChange={(event) => setSseUrl(event.target.value)}
+                  value={form.sseUrl}
+                  onChange={(event) => setFormField('sseUrl', event.target.value)}
                   placeholder="SSE endpoint URL"
                   className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
                 />
                 <button
-                  onClick={handleConnectSse}
+                  onClick={() => {
+                    void connectSseUrl(form.sseUrl)
+                  }}
                   className="mt-2 w-full rounded border border-slate-700 px-2 py-1 text-sm text-slate-300"
                 >
                   Connect SSE URL
@@ -397,13 +178,17 @@ function App(): React.JSX.Element {
                       {profile.transport === 'stdio' ? `cwd: ${profile.cwd}` : 'transport: sse'}
                     </p>
                     <button
-                      onClick={() => handleDeleteProfile(profile.id)}
+                      onClick={() => {
+                        void deleteProfile(profile.id)
+                      }}
                       className="mt-2 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
                     >
                       Delete
                     </button>
                     <button
-                      onClick={() => handleConnectProfile(profile)}
+                      onClick={() => {
+                        void connectProfile(profile)
+                      }}
                       className="mt-2 ml-2 rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-900"
                     >
                       Connect
@@ -442,13 +227,17 @@ function App(): React.JSX.Element {
                 Refresh Sessions
               </button>
               <button
-                onClick={refreshSessionMessages}
+                onClick={() => {
+                  void refreshActiveSessionMessages()
+                }}
                 className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
               >
                 Refresh Messages
               </button>
               <button
-                onClick={handleDisconnectSession}
+                onClick={() => {
+                  void disconnectActiveSession()
+                }}
                 className="mt-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
               >
                 Disconnect Active Session
