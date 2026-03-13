@@ -1,9 +1,11 @@
+import DiscoveryPanel from './components/discovery/DiscoveryPanel'
 import { useEffect } from 'react'
 import ProtocolInspector from './components/inspector/ProtocolInspector'
 import AppShell from './components/layout/AppShell'
 import StatusBar from './components/layout/StatusBar'
 import ServerSidebar from './components/sidebar/ServerSidebar'
 import WorkspacePanel from './components/workspace/WorkspacePanel'
+import { useDiscoveryStore } from './stores/discovery-store'
 import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
 import { useUIStore } from './stores/ui-store'
@@ -37,6 +39,21 @@ function App(): React.JSX.Element {
     (state) => state.refreshActiveSessionMessages
   )
   const hydrateSessionList = useSessionStore((state) => state.hydrateSessionList)
+
+  const discoveryTab = useDiscoveryStore((state) => state.activeTab)
+  const discoveryTools = useDiscoveryStore((state) => state.tools)
+  const discoveryResources = useDiscoveryStore((state) => state.resources)
+  const discoveryPrompts = useDiscoveryStore((state) => state.prompts)
+  const discoveryLoading = useDiscoveryStore((state) => state.loading)
+  const discoveryError = useDiscoveryStore((state) => state.error)
+  const discoveryResult = useDiscoveryStore((state) => state.activeResult)
+  const discoveryResultTitle = useDiscoveryStore((state) => state.activeResultTitle)
+  const setDiscoveryTab = useDiscoveryStore((state) => state.setActiveTab)
+  const clearDiscoveryResult = useDiscoveryStore((state) => state.clearResult)
+  const hydrateDiscovery = useDiscoveryStore((state) => state.hydrateDiscovery)
+  const invokeTool = useDiscoveryStore((state) => state.invokeTool)
+  const loadResource = useDiscoveryStore((state) => state.loadResource)
+  const loadPrompt = useDiscoveryStore((state) => state.loadPrompt)
 
   useEffect(() => {
     let mounted = true
@@ -83,6 +100,10 @@ function App(): React.JSX.Element {
       window.clearInterval(timer)
     }
   }, [refreshActiveSessionMessages, sessionStatus, setSessionError])
+
+  useEffect(() => {
+    void hydrateDiscovery(sessionStatus)
+  }, [hydrateDiscovery, sessionStatus])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -136,12 +157,39 @@ function App(): React.JSX.Element {
         />
       }
       main={
-        <WorkspacePanel
-          metaText={metaText}
-          profileCount={profiles.length}
-          sessionStatus={sessionStatus}
-          sessionError={sessionError}
-        />
+        <>
+          <WorkspacePanel
+            metaText={metaText}
+            profileCount={profiles.length}
+            sessionStatus={sessionStatus}
+            sessionError={sessionError}
+          />
+          <DiscoveryPanel
+            sessionStatus={sessionStatus}
+            activeTab={discoveryTab}
+            tools={discoveryTools}
+            resources={discoveryResources}
+            prompts={discoveryPrompts}
+            loading={discoveryLoading}
+            error={discoveryError}
+            activeResult={discoveryResult}
+            activeResultTitle={discoveryResultTitle}
+            onChangeTab={setDiscoveryTab}
+            onReload={() => {
+              void hydrateDiscovery(sessionStatus)
+            }}
+            onInvokeTool={(name, args) => {
+              void invokeTool(sessionStatus, name, args)
+            }}
+            onReadResource={(uri) => {
+              void loadResource(sessionStatus, uri)
+            }}
+            onGetPrompt={(name, args) => {
+              void loadPrompt(sessionStatus, name, args)
+            }}
+            onClearResult={clearDiscoveryResult}
+          />
+        </>
       }
       inspector={
         <ProtocolInspector
