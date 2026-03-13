@@ -13,7 +13,13 @@ const api: AppApi = {
   disconnectSession: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionDisconnect, input),
   getSessionStatus: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionStatus, input),
   getSessionMessages: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionMessages, input),
-  listSessions: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionList, input)
+  listSessions: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionList, input),
+  listTools: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListTools, input),
+  listResources: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListResources, input),
+  listPrompts: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListPrompts, input),
+  callTool: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryCallTool, input),
+  readResource: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryReadResource, input),
+  getPrompt: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryGetPrompt, input)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

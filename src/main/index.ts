@@ -10,7 +10,11 @@ import {
   type DeleteServerProfileInput,
   type UpsertServerProfileInput,
   type SessionMessagesInput,
-  type SessionListInput
+  type SessionListInput,
+  type DiscoverySessionInput,
+  type DiscoveryCallToolInput,
+  type DiscoveryReadResourceInput,
+  type DiscoveryGetPromptInput
 } from '../shared/ipc'
 import {
   deleteServerProfile,
@@ -117,6 +121,30 @@ app.whenReady().then(() => {
     return sessionManager.listSessions(input?.limit)
   })
 
+  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryListTools, (_, input: DiscoverySessionInput) => {
+    return sessionManager.listTools(input.sessionId)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryListResources, (_, input: DiscoverySessionInput) => {
+    return sessionManager.listResources(input.sessionId)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryListPrompts, (_, input: DiscoverySessionInput) => {
+    return sessionManager.listPrompts(input.sessionId)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryCallTool, (_, input: DiscoveryCallToolInput) => {
+    return sessionManager.callTool(input)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryReadResource, (_, input: DiscoveryReadResourceInput) => {
+    return sessionManager.readResource(input)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryGetPrompt, (_, input: DiscoveryGetPromptInput) => {
+    return sessionManager.getPrompt(input)
+  })
+
   createWindow()
 
   app.on('activate', function () {
@@ -147,6 +175,12 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionStatus)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionMessages)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionList)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListTools)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListResources)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListPrompts)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryCallTool)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryReadResource)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryGetPrompt)
 })
 
 // In this file you can include the rest of your app's specific main process

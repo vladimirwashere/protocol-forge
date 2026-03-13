@@ -4,6 +4,13 @@ import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { APP_NAME, APP_VERSION } from '../../shared/constants'
 import { AppError, getErrorMessage } from '../../shared/errors'
 import type {
+  DiscoveryCallToolInput,
+  DiscoveryGetPromptInput,
+  DiscoveryListPromptsResponse,
+  DiscoveryListResourcesResponse,
+  DiscoveryListToolsResponse,
+  DiscoveryOperationResult,
+  DiscoveryReadResourceInput,
   SessionConnectInput,
   SessionConnectResponse,
   SessionDisconnectInput,
@@ -252,6 +259,129 @@ export class SessionManager {
     })
   }
 
+  async listTools(sessionId: string): Promise<DiscoveryListToolsResponse> {
+    const runtime = this.getReadyRuntimeSession(sessionId)
+    const listed = await runtime.client.listTools()
+
+    return {
+      tools: listed.tools.map((tool) => {
+        const mapped: DiscoveryListToolsResponse['tools'][number] = {
+          name: tool.name,
+          inputSchema: tool.inputSchema
+        }
+
+        if (tool.description !== undefined) {
+          mapped.description = tool.description
+        }
+
+        if (tool.outputSchema !== undefined) {
+          mapped.outputSchema = tool.outputSchema
+        }
+
+        if (tool.annotations !== undefined) {
+          mapped.annotations = tool.annotations as Record<string, unknown>
+        }
+
+        return mapped
+      })
+    }
+  }
+
+  async listResources(sessionId: string): Promise<DiscoveryListResourcesResponse> {
+    const runtime = this.getReadyRuntimeSession(sessionId)
+    const listed = await runtime.client.listResources()
+
+    return {
+      resources: listed.resources.map((resource) => {
+        const mapped: DiscoveryListResourcesResponse['resources'][number] = {
+          uri: resource.uri,
+          name: resource.name
+        }
+
+        if (resource.description !== undefined) {
+          mapped.description = resource.description
+        }
+
+        if (resource.mimeType !== undefined) {
+          mapped.mimeType = resource.mimeType
+        }
+
+        return mapped
+      })
+    }
+  }
+
+  async listPrompts(sessionId: string): Promise<DiscoveryListPromptsResponse> {
+    const runtime = this.getReadyRuntimeSession(sessionId)
+    const listed = await runtime.client.listPrompts()
+
+    return {
+      prompts: listed.prompts.map((prompt) => {
+        const mapped: DiscoveryListPromptsResponse['prompts'][number] = {
+          name: prompt.name
+        }
+
+        if (prompt.description !== undefined) {
+          mapped.description = prompt.description
+        }
+
+        if (prompt.arguments !== undefined) {
+          mapped.arguments = prompt.arguments.map((argument) => {
+            const mappedArgument: NonNullable<
+              DiscoveryListPromptsResponse['prompts'][number]['arguments']
+            >[number] = {
+              name: argument.name
+            }
+
+            if (argument.description !== undefined) {
+              mappedArgument.description = argument.description
+            }
+
+            if (argument.required !== undefined) {
+              mappedArgument.required = argument.required
+            }
+
+            return mappedArgument
+          })
+        }
+
+        return mapped
+      })
+    }
+  }
+
+  async callTool(input: DiscoveryCallToolInput): Promise<DiscoveryOperationResult> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+
+    const result = await runtime.client.callTool({
+      name: input.name,
+      arguments: input.arguments
+    })
+
+    return { result }
+  }
+
+  async readResource(input: DiscoveryReadResourceInput): Promise<DiscoveryOperationResult> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+
+    const result = await runtime.client.readResource({
+      uri: input.uri
+    })
+
+    return { result }
+  }
+
+  async getPrompt(input: DiscoveryGetPromptInput): Promise<DiscoveryOperationResult> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+
+    const result = await runtime.client.getPrompt({
+      name: input.name,
+      arguments: input.arguments
+    })
+
+    return { result }
+  }
+
   private captureMessage(
     sessionId: string,
     direction: 'outbound' | 'inbound',
@@ -263,6 +393,21 @@ export class SessionManager {
       payloadJson: JSON.stringify(message),
       createdAt: new Date().toISOString()
     })
+  }
+
+  private getReadyRuntimeSession(sessionId: string): RuntimeSession {
+    const runtime = this.sessions.get(sessionId)
+    if (!runtime) {
+      throw new AppError('SESSION_NOT_FOUND', `Session ${sessionId} was not found`)
+    }
+
+    if (runtime.state !== 'ready') {
+      throw new AppError('SESSION_NOT_READY', `Session ${sessionId} is not ready`, {
+        state: runtime.state
+      })
+    }
+
+    return runtime
   }
 
   private setSessionState(sessionId: string, state: SessionState): void {

@@ -8,7 +8,13 @@ export const IPC_CHANNELS = {
   mcpSessionDisconnect: 'mcp-session:disconnect',
   mcpSessionStatus: 'mcp-session:status',
   mcpSessionMessages: 'mcp-session:messages',
-  mcpSessionList: 'mcp-session:list'
+  mcpSessionList: 'mcp-session:list',
+  mcpDiscoveryListTools: 'mcp-discovery:list-tools',
+  mcpDiscoveryListResources: 'mcp-discovery:list-resources',
+  mcpDiscoveryListPrompts: 'mcp-discovery:list-prompts',
+  mcpDiscoveryCallTool: 'mcp-discovery:call-tool',
+  mcpDiscoveryReadResource: 'mcp-discovery:read-resource',
+  mcpDiscoveryGetPrompt: 'mcp-discovery:get-prompt'
 } as const
 
 export type AppMeta = {
@@ -140,6 +146,70 @@ export type SessionListInput = {
   limit?: number
 }
 
+export type DiscoverySessionInput = {
+  sessionId: string
+}
+
+export type DiscoveryTool = {
+  name: string
+  description?: string
+  inputSchema: Record<string, unknown>
+  outputSchema?: Record<string, unknown>
+  annotations?: Record<string, unknown>
+}
+
+export type DiscoveryResource = {
+  uri: string
+  name: string
+  description?: string
+  mimeType?: string
+}
+
+export type DiscoveryPromptArgument = {
+  name: string
+  description?: string
+  required?: boolean
+}
+
+export type DiscoveryPrompt = {
+  name: string
+  description?: string
+  arguments?: DiscoveryPromptArgument[]
+}
+
+export type DiscoveryListToolsResponse = {
+  tools: DiscoveryTool[]
+}
+
+export type DiscoveryListResourcesResponse = {
+  resources: DiscoveryResource[]
+}
+
+export type DiscoveryListPromptsResponse = {
+  prompts: DiscoveryPrompt[]
+}
+
+export type DiscoveryCallToolInput = {
+  sessionId: string
+  name: string
+  arguments?: Record<string, unknown>
+}
+
+export type DiscoveryReadResourceInput = {
+  sessionId: string
+  uri: string
+}
+
+export type DiscoveryGetPromptInput = {
+  sessionId: string
+  name: string
+  arguments?: Record<string, string>
+}
+
+export type DiscoveryOperationResult = {
+  result: unknown
+}
+
 export type AppApi = {
   getAppMeta: () => Promise<AppMeta>
   ping: () => Promise<PingResponse>
@@ -151,4 +221,10 @@ export type AppApi = {
   getSessionStatus: (input: SessionStatusInput) => Promise<SessionStatus>
   getSessionMessages: (input: SessionMessagesInput) => Promise<SessionMessage[]>
   listSessions: (input?: SessionListInput) => Promise<SessionSummary[]>
+  listTools: (input: DiscoverySessionInput) => Promise<DiscoveryListToolsResponse>
+  listResources: (input: DiscoverySessionInput) => Promise<DiscoveryListResourcesResponse>
+  listPrompts: (input: DiscoverySessionInput) => Promise<DiscoveryListPromptsResponse>
+  callTool: (input: DiscoveryCallToolInput) => Promise<DiscoveryOperationResult>
+  readResource: (input: DiscoveryReadResourceInput) => Promise<DiscoveryOperationResult>
+  getPrompt: (input: DiscoveryGetPromptInput) => Promise<DiscoveryOperationResult>
 }
