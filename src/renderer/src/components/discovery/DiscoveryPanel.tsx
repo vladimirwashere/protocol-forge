@@ -5,6 +5,7 @@ import type {
   SessionStatus
 } from '../../../../shared/ipc'
 import SchemaForm from '../forms/SchemaForm'
+import ResultRenderer from '../results/ResultRenderer'
 
 type DiscoveryPanelProps = {
   sessionStatus: SessionStatus | null
@@ -244,20 +245,7 @@ function DiscoveryPanel({
       ) : null}
 
       {activeResult ? (
-        <div className="mt-3 rounded border border-slate-800 bg-slate-950/60 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-300">{activeResultTitle ?? 'Result'}</p>
-            <button
-              onClick={onClearResult}
-              className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
-            >
-              Clear
-            </button>
-          </div>
-          <pre className="max-h-48 overflow-auto text-xs text-slate-300">
-            {JSON.stringify(activeResult, null, 2)}
-          </pre>
-        </div>
+        <ResultRenderer title={activeResultTitle} result={activeResult} onClear={onClearResult} />
       ) : null}
     </div>
   )
