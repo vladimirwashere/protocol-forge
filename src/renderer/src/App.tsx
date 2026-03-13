@@ -6,6 +6,7 @@ import StatusBar from './components/layout/StatusBar'
 import ServerSidebar from './components/sidebar/ServerSidebar'
 import WorkspacePanel from './components/workspace/WorkspacePanel'
 import { useDiscoveryStore } from './stores/discovery-store'
+import { useMessageStore } from './stores/message-store'
 import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
 import { useUIStore } from './stores/ui-store'
@@ -54,6 +55,16 @@ function App(): React.JSX.Element {
   const invokeTool = useDiscoveryStore((state) => state.invokeTool)
   const loadResource = useDiscoveryStore((state) => state.loadResource)
   const loadPrompt = useDiscoveryStore((state) => state.loadPrompt)
+
+  const inspectorMessages = useMessageStore((state) => state.messages)
+  const inspectorPaused = useMessageStore((state) => state.paused)
+  const inspectorFilters = useMessageStore((state) => state.filters)
+  const ingestMessages = useMessageStore((state) => state.ingestMessages)
+  const toggleInspectorPaused = useMessageStore((state) => state.togglePaused)
+  const clearInspectorMessages = useMessageStore((state) => state.clearMessages)
+  const setInspectorDirectionFilter = useMessageStore((state) => state.setDirectionFilter)
+  const setInspectorMethodFilter = useMessageStore((state) => state.setMethodFilter)
+  const setInspectorSearchFilter = useMessageStore((state) => state.setSearchFilter)
 
   useEffect(() => {
     let mounted = true
@@ -104,6 +115,10 @@ function App(): React.JSX.Element {
   useEffect(() => {
     void hydrateDiscovery(sessionStatus)
   }, [hydrateDiscovery, sessionStatus])
+
+  useEffect(() => {
+    void ingestMessages(sessionStatus?.sessionId ?? null, sessionMessages)
+  }, [ingestMessages, sessionMessages, sessionStatus?.sessionId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -194,9 +209,13 @@ function App(): React.JSX.Element {
       inspector={
         <ProtocolInspector
           sessionStatus={sessionStatus}
-          sessionMessages={sessionMessages}
+          sessionMessages={inspectorMessages}
           sessionHistory={sessionHistory}
           sessionError={sessionError}
+          paused={inspectorPaused}
+          directionFilter={inspectorFilters.direction}
+          methodFilter={inspectorFilters.method}
+          searchFilter={inspectorFilters.search}
           onRefreshSessions={() => {
             void refreshSessionHistory()
           }}
@@ -209,6 +228,11 @@ function App(): React.JSX.Element {
           onInspectSession={(sessionId) => {
             void inspectSession(sessionId)
           }}
+          onTogglePaused={toggleInspectorPaused}
+          onClearMessages={clearInspectorMessages}
+          onDirectionFilterChange={setInspectorDirectionFilter}
+          onMethodFilterChange={setInspectorMethodFilter}
+          onSearchFilterChange={setInspectorSearchFilter}
         />
       }
       statusBar={
