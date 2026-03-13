@@ -3,7 +3,7 @@ import type { ServerProfile, UpsertServerProfileInput } from '../../../shared/ip
 
 export type ProfileTransport = 'stdio' | 'sse'
 
-type ServerFormState = {
+export type ServerFormState = {
   name: string
   transport: ProfileTransport
   command: string
