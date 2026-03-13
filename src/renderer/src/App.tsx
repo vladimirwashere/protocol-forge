@@ -135,7 +135,14 @@ function App(): React.JSX.Element {
           }}
         />
       }
-      main={<WorkspacePanel metaText={metaText} />}
+      main={
+        <WorkspacePanel
+          metaText={metaText}
+          profileCount={profiles.length}
+          sessionStatus={sessionStatus}
+          sessionError={sessionError}
+        />
+      }
       inspector={
         <ProtocolInspector
           sessionStatus={sessionStatus}
