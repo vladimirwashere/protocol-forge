@@ -17,7 +17,7 @@ function openDatabase(): Database.Database {
   const userDataDir = app.getPath('userData')
   mkdirSync(userDataDir, { recursive: true })
 
-  const dbPath = join(userDataDir, 'mcp-scope.db')
+  const dbPath = join(userDataDir, 'protocol-forge.db')
   const instance = new Database(dbPath)
 
   instance.pragma('journal_mode = WAL')

@@ -1,10 +1,10 @@
 {
-  "name": "mcp-scope",
+  "name": "protocol-forge",
   "version": "0.1.0",
   "private": true,
   "description": "Desktop-first MCP engineering workbench",
   "main": "./out/main/index.js",
-  "author": "MCP Scope",
+  "author": "Vladimir Pirvu",
   "scripts": {
     "dev": "electron-vite dev",
     "start": "electron-vite preview",

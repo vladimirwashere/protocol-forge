@@ -1,6 +1,6 @@
-# MCP Scope
+# Protocol Forge
 
-Desktop-first MCP engineering workbench for connecting to MCP servers, exploring capabilities, invoking tools/resources/prompts, and inspecting JSON-RPC traffic.
+Desktop-first MCP operations console for engineering teams that need reliable protocol visibility, repeatable invocation workflows, and production-grade debugging ergonomics.
 
 ## What It Does
 
@@ -94,11 +94,11 @@ headers: optional key/value headers
 
 ### Where data is stored
 
-MCP Scope stores local data in a SQLite database named `mcp-scope.db` inside Electron `userData`.
+Protocol Forge stores local data in a SQLite database named `protocol-forge.db` inside Electron `userData`.
 
-- macOS: `~/Library/Application Support/mcp-scope/mcp-scope.db`
-- Linux: `~/.config/mcp-scope/mcp-scope.db`
-- Windows: `%APPDATA%/mcp-scope/mcp-scope.db`
+- macOS: `~/Library/Application Support/protocol-forge/protocol-forge.db`
+- Linux: `~/.config/protocol-forge/protocol-forge.db`
+- Windows: `%APPDATA%/protocol-forge/protocol-forge.db`
 
 ### Common failure patterns
 

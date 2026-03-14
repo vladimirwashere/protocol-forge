@@ -1,6 +1,6 @@
 # Development Guide
 
-This document is the practical reference for running, validating, and troubleshooting MCP Scope during development.
+This document is the practical reference for running, validating, and troubleshooting Protocol Forge during development.
 
 ## Prerequisites
 
@@ -66,7 +66,7 @@ pnpm build
 ## Local Persistence
 
 - Storage engine: SQLite (`better-sqlite3`) in WAL mode with foreign keys enabled.
-- Database file: `mcp-scope.db` in Electron `userData` directory.
+- Database file: `protocol-forge.db` in Electron `userData` directory.
 - Primary tables: `server_profiles`, `sessions`, `messages`.
 
 ## Local MCP Server Examples

@@ -24,7 +24,7 @@ function ServerSidebar({
 }: ServerSidebarProps): React.JSX.Element {
   return (
     <>
-      <div className="text-xs uppercase tracking-[0.18em] text-slate-400">MCP Scope</div>
+      <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Protocol Forge</div>
       <h1 className="mt-2 text-lg font-semibold">Servers</h1>
 
       <div className="mt-4 space-y-2 rounded border border-slate-800 bg-slate-950/60 p-3">

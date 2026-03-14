@@ -1,4 +1,4 @@
-# MCP Scope — Phase 1 Build Scope
+# Protocol Forge — Phase 1 Build Scope
 
 ## Build Description
 

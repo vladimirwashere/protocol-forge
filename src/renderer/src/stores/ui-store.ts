@@ -37,7 +37,7 @@ export const useUIStore = create<UIStoreState>()(
       }
     }),
     {
-      name: 'mcp-scope-ui-preferences',
+      name: 'protocol-forge-ui-preferences',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         inspectorHeight: state.inspectorHeight

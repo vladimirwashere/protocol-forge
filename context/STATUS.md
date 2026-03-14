@@ -1,4 +1,4 @@
-# MCP Scope — Current Status
+# Protocol Forge — Current Status
 
 **Last updated:** 2026-03-14
 
@@ -40,6 +40,7 @@
 - Added panel-level React error boundaries for sidebar, workspace/discovery, inspector, and status bar to isolate renderer failures.
 - Added Electron application menu (File/Edit/View/Window/Help) with standard roles and safe external help links.
 - Added `docs/architecture.md` and `docs/development.md`, including known limitations and Phase 2 recommendations.
+- Renamed project identity from `MCP Scope` to `Protocol Forge` across app metadata, package name, docs, context files, persistence filename, UI preference key, and renderer branding.
 - Ran full validation suite successfully: `pnpm lint`, `pnpm typecheck`, `pnpm test --run`, `pnpm build`.
 
 ## Known Issues / Gaps

@@ -1,4 +1,4 @@
-# MCP Scope — Architecture & Design Decisions
+# Protocol Forge — Architecture & Design Decisions
 
 Decisions are final unless a milestone requires revisiting them. Do not re-litigate.
 

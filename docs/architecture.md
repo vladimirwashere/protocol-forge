@@ -1,8 +1,8 @@
-# MCP Scope Architecture
+# Protocol Forge Architecture
 
 ## Overview
 
-MCP Scope is a desktop Electron app for inspecting and testing MCP servers over `stdio` and `SSE` transports.
+Protocol Forge is a desktop Electron app for inspecting and testing MCP servers over `stdio` and `SSE` transports.
 
 Runtime is split across the standard Electron trust boundaries:
 
