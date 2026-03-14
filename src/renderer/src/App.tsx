@@ -66,6 +66,9 @@ function App(): React.JSX.Element {
   const setInspectorMethodFilter = useMessageStore((state) => state.setMethodFilter)
   const setInspectorSearchFilter = useMessageStore((state) => state.setSearchFilter)
 
+  const sessionId = sessionStatus?.sessionId ?? null
+  const sessionState = sessionStatus?.state ?? null
+
   useEffect(() => {
     let mounted = true
 
@@ -93,11 +96,7 @@ function App(): React.JSX.Element {
   }, [hydrateMeta, refreshProfiles, hydrateSessionList, setSessionError])
 
   useEffect(() => {
-    if (
-      !sessionStatus ||
-      sessionStatus.state === 'disconnected' ||
-      sessionStatus.state === 'error'
-    ) {
+    if (!sessionId || sessionState === 'disconnected' || sessionState === 'error') {
       return
     }
 
@@ -110,15 +109,15 @@ function App(): React.JSX.Element {
     return () => {
       window.clearInterval(timer)
     }
-  }, [refreshActiveSessionMessages, sessionStatus, setSessionError])
+  }, [refreshActiveSessionMessages, sessionId, sessionState, setSessionError])
 
   useEffect(() => {
     void hydrateDiscovery(sessionStatus)
-  }, [hydrateDiscovery, sessionStatus])
+  }, [hydrateDiscovery, sessionId, sessionState])
 
   useEffect(() => {
-    void ingestMessages(sessionStatus?.sessionId ?? null, sessionMessages)
-  }, [ingestMessages, sessionMessages, sessionStatus?.sessionId])
+    void ingestMessages(sessionId, sessionMessages)
+  }, [ingestMessages, sessionMessages, sessionId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {

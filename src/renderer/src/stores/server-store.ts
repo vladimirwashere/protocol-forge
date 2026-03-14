@@ -70,6 +70,7 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
         .split(' ')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
+      const cwd = form.cwd.trim()
 
       const payload: UpsertServerProfileInput =
         form.transport === 'stdio'
@@ -78,7 +79,7 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
               transport: 'stdio',
               command: form.command,
               args,
-              cwd: form.cwd
+              ...(cwd.length > 0 ? { cwd } : {})
             }
           : {
               name: form.name,

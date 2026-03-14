@@ -39,13 +39,15 @@ function toServerProfile(row: ServerProfileRow): ServerProfile {
     transport: 'stdio',
     command: row.command,
     args: JSON.parse(row.args_json) as string[],
-    cwd: row.cwd,
+    ...(row.cwd.length > 0 ? { cwd: row.cwd } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
 }
 
 function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInput {
+  const trimmedCwd = input.transport === 'stdio' ? input.cwd?.trim() : undefined
+
   const normalized: UpsertServerProfileInput =
     input.transport === 'stdio'
       ? {
@@ -53,7 +55,7 @@ function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInp
           transport: 'stdio',
           command: input.command.trim(),
           args: input.args.map((arg) => arg.trim()).filter((arg) => arg.length > 0),
-          cwd: input.cwd.trim()
+          ...(trimmedCwd !== undefined && trimmedCwd.length > 0 ? { cwd: trimmedCwd } : {})
         }
       : {
           name: input.name.trim(),
@@ -79,10 +81,6 @@ function ensureValidInput(input: UpsertServerProfileInput): void {
   if (input.transport === 'stdio') {
     if (input.command.length === 0) {
       throw new Error('Server profile command is required')
-    }
-
-    if (input.cwd.length === 0) {
-      throw new Error('Server profile cwd is required')
     }
 
     return
@@ -174,7 +172,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
     transportType: input.transport,
     command: input.transport === 'stdio' ? input.command : 'sse',
     argsJson: JSON.stringify(input.transport === 'stdio' ? input.args : []),
-    cwd: input.transport === 'stdio' ? input.cwd : '',
+    cwd: input.transport === 'stdio' ? (input.cwd ?? '') : '',
     url: input.transport === 'sse' ? input.url : null,
     headersJson: input.transport === 'sse' ? JSON.stringify(input.headers ?? {}) : null,
     createdAt,

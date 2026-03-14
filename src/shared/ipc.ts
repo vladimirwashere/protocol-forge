@@ -49,7 +49,7 @@ export type UpsertServerProfileInput =
       transport: 'stdio'
       command: string
       args: string[]
-      cwd: string
+      cwd?: string
     }
   | {
       id?: string

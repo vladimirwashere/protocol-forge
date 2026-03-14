@@ -118,6 +118,9 @@ export function createTracedStdioTransport(
   onTrace: MessageTraceHandler
 ): Transport {
   const validated = normalizeAndValidateStdioInput(input)
+  const inheritedEnv = Object.fromEntries(
+    Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)
+  )
 
   const serverParams: {
     command: string
@@ -127,7 +130,10 @@ export function createTracedStdioTransport(
   } = {
     command: validated.command,
     args: validated.args,
-    env: validated.env
+    env: {
+      ...inheritedEnv,
+      ...validated.env
+    }
   }
 
   if (validated.cwd !== undefined) {
