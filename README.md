@@ -80,6 +80,8 @@ transport: stdio
 command: npx
 args: @modelcontextprotocol/server-everything
 cwd: <optional working directory>
+
+Note: profile fields also accept labeled input (for example `command: npx`, `args: ...`). Labels are sanitized on save.
 ```
 
 ### SSE profile
@@ -88,6 +90,8 @@ cwd: <optional working directory>
 transport: sse
 url: https://example.com/mcp/sse
 headers: optional key/value headers
+
+Note: `url:` labels are sanitized on save.
 ```
 
 ## Debugging and Operations

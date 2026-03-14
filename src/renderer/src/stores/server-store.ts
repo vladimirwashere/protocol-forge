@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import type { ServerProfile, UpsertServerProfileInput } from '../../../shared/ipc'
 
-import { parseSseHeadersRaw } from './server-store-utils'
+import {
+  normalizeCommandInput,
+  normalizeSseUrlInput,
+  parseSseHeadersRaw,
+  parseStdioArgsRaw
+} from './server-store-utils'
 
 export type ProfileTransport = 'stdio' | 'sse'
 
@@ -66,25 +71,24 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
 
     try {
       const { form } = get()
-      const args = form.argsRaw
-        .split(' ')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
+      const args = parseStdioArgsRaw(form.argsRaw)
+      const command = normalizeCommandInput(form.command)
       const cwd = form.cwd.trim()
+      const sseUrl = normalizeSseUrlInput(form.sseUrl)
 
       const payload: UpsertServerProfileInput =
         form.transport === 'stdio'
           ? {
               name: form.name,
               transport: 'stdio',
-              command: form.command,
+              command,
               args,
               cwd
             }
           : {
               name: form.name,
               transport: 'sse',
-              url: form.sseUrl,
+              url: sseUrl,
               headers: parseSseHeadersRaw(form.sseHeadersRaw)
             }
 

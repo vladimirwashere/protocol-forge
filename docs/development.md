@@ -92,6 +92,8 @@ Configure a profile with transport `sse` and set `url`.
 
 - For `stdio`, validate command/args/cwd and run the command manually from the same directory.
 - For `sse`, verify endpoint URL, scheme (`http`/`https`), and required headers.
+- Profile input tolerates optional labels like `command:`, `args:`, and `url:`. They are sanitized on save.
+- Legacy saved stdio args that accidentally start with `args:` are normalized at connect time.
 
 ### Discovery calls fail
 
@@ -118,6 +120,7 @@ pnpm test --run
 - Native dependency build errors: run `pnpm install` again and ensure your system toolchain is available.
 - Session connect failures: verify command/url and inspect protocol errors in the inspector.
 - Empty discovery lists: ensure session state is `ready` before listing tools/resources/prompts.
+- If a profile still fails after edits, re-save it once so stored fields are normalized.
 
 ## Error Handling Expectations
 

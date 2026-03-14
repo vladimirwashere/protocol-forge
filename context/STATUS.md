@@ -27,6 +27,10 @@
 
 ## Completed This Session
 
+- Diagnosed stdio connect failures (`MCP error -32000: Connection closed`) to malformed saved args containing a literal `args:` token (`["args:", "@modelcontextprotocol/server-everything"]`).
+- Added renderer-side input sanitization for labeled entries (`command:`, `args:`, `url:`) and connect-time normalization for legacy saved `args:` tokens.
+- Added tests for new command/args/url sanitizers and legacy args normalization behavior.
+- Fixed sandbox preload startup failure by removing `@electron-toolkit/preload` runtime import and exposing a local `window.electron.process.versions` bridge so `window.api` registers reliably in renderer.
 - Extended session/message IPC contracts for M9 stats fields (`errorCount`, `avgLatencyMs`, `durationMs`) and optional profile linkage.
 - Added SQLite schema backfills for `sessions.server_profile_id`, `messages.latency_ms`, and `messages.is_error`.
 - Updated session persistence queries to expose grouped profile metadata and per-session aggregates.

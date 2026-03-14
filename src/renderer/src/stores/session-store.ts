@@ -5,6 +5,7 @@ import type {
   SessionStatus,
   SessionSummary
 } from '../../../shared/ipc'
+import { normalizeLegacyArgs } from './server-store-utils'
 
 const ACTIVE_MESSAGE_LIMIT = 100
 
@@ -170,7 +171,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 cwd?: string
               } = {
                 command: profile.command ?? '',
-                args: profile.args ?? []
+                args: normalizeLegacyArgs(profile.args ?? [])
               }
 
               if (profile.cwd !== undefined) {
