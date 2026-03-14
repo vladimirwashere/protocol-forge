@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { SessionMessage, SessionStatus, SessionSummary } from '../../../../shared/ipc'
 
 type ProtocolInspectorProps = {
@@ -43,6 +43,10 @@ const includesText = (payload: unknown, searchFilter: string): boolean => {
   return JSON.stringify(payload).toLowerCase().includes(search)
 }
 
+const VIRTUAL_ROW_HEIGHT = 72
+const VIRTUAL_VIEWPORT_HEIGHT = 224
+const VIRTUAL_OVERSCAN = 6
+
 function ProtocolInspector({
   sessionStatus,
   sessionMessages,
@@ -63,6 +67,8 @@ function ProtocolInspector({
   onSearchFilterChange
 }: ProtocolInspectorProps): React.JSX.Element {
   const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null)
+  const [virtualScrollTop, setVirtualScrollTop] = useState(0)
+  const listContainerRef = useRef<HTMLDivElement | null>(null)
 
   const filteredMessages = useMemo(() => {
     const normalizedMethod = methodFilter.trim().toLowerCase()
@@ -87,6 +93,30 @@ function ProtocolInspector({
     filteredMessages.find((message) => message.id === selectedMessageId) ??
     filteredMessages.at(-1) ??
     null
+
+  const { visibleMessages, topSpacerHeight, bottomSpacerHeight } = useMemo(() => {
+    if (filteredMessages.length === 0) {
+      return {
+        visibleMessages: [] as typeof filteredMessages,
+        topSpacerHeight: 0,
+        bottomSpacerHeight: 0
+      }
+    }
+
+    const startIndex = Math.max(
+      0,
+      Math.floor(virtualScrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN
+    )
+    const visibleCount =
+      Math.ceil(VIRTUAL_VIEWPORT_HEIGHT / VIRTUAL_ROW_HEIGHT) + VIRTUAL_OVERSCAN * 2
+    const endIndex = Math.min(filteredMessages.length, startIndex + visibleCount)
+
+    return {
+      visibleMessages: filteredMessages.slice(startIndex, endIndex),
+      topSpacerHeight: startIndex * VIRTUAL_ROW_HEIGHT,
+      bottomSpacerHeight: (filteredMessages.length - endIndex) * VIRTUAL_ROW_HEIGHT
+    }
+  }, [filteredMessages, virtualScrollTop])
 
   return (
     <>
@@ -172,11 +202,19 @@ function ProtocolInspector({
           <div className="text-xs text-slate-500">Visible messages: {filteredMessages.length}</div>
 
           <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="max-h-56 space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2">
+            <div
+              ref={listContainerRef}
+              onScroll={(event) => {
+                setVirtualScrollTop(event.currentTarget.scrollTop)
+              }}
+              className="max-h-56 space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2"
+            >
               {filteredMessages.length === 0 ? (
                 <p className="text-xs text-slate-500">No captured messages yet.</p>
               ) : (
-                filteredMessages.map((message) => {
+                <>
+                  {topSpacerHeight > 0 ? <div style={{ height: `${topSpacerHeight}px` }} /> : null}
+                  {visibleMessages.map((message) => {
                   const method = getPayloadMethod(message.payload)
 
                   return (
@@ -190,6 +228,7 @@ function ProtocolInspector({
                           ? 'border-slate-500 bg-slate-800/70'
                           : 'border-slate-800 bg-slate-900/50'
                       }`}
+                      style={{ minHeight: `${VIRTUAL_ROW_HEIGHT}px` }}
                     >
                       <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.08em]">
                         <span
@@ -208,7 +247,11 @@ function ProtocolInspector({
                       </div>
                     </button>
                   )
-                })
+                  })}
+                  {bottomSpacerHeight > 0 ? (
+                    <div style={{ height: `${bottomSpacerHeight}px` }} />
+                  ) : null}
+                </>
               )}
             </div>
 
