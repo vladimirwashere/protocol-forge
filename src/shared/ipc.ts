@@ -8,6 +8,7 @@ export const IPC_CHANNELS = {
   mcpSessionDisconnect: 'mcp-session:disconnect',
   mcpSessionStatus: 'mcp-session:status',
   mcpSessionMessages: 'mcp-session:messages',
+  mcpSessionMessagesStream: 'mcp-session:messages-stream',
   mcpSessionList: 'mcp-session:list',
   mcpDiscoveryListTools: 'mcp-discovery:list-tools',
   mcpDiscoveryListResources: 'mcp-discovery:list-resources',
@@ -132,6 +133,12 @@ export type SessionMessagesInput = {
   limit?: number
 }
 
+export type SessionMessagesListener = (messages: SessionMessage[]) => void
+
+export type SessionMessagesStreamInput = {
+  enabled: boolean
+}
+
 export type SessionSummary = {
   sessionId: string
   state: SessionState
@@ -220,6 +227,7 @@ export type AppApi = {
   disconnectSession: (input: SessionDisconnectInput) => Promise<{ ok: true }>
   getSessionStatus: (input: SessionStatusInput) => Promise<SessionStatus>
   getSessionMessages: (input: SessionMessagesInput) => Promise<SessionMessage[]>
+  subscribeSessionMessages: (listener: SessionMessagesListener) => () => void
   listSessions: (input?: SessionListInput) => Promise<SessionSummary[]>
   listTools: (input: DiscoverySessionInput) => Promise<DiscoveryListToolsResponse>
   listResources: (input: DiscoverySessionInput) => Promise<DiscoveryListResourcesResponse>

@@ -9,7 +9,9 @@ import {
   type PingResponse,
   type DeleteServerProfileInput,
   type UpsertServerProfileInput,
+  type SessionMessage,
   type SessionMessagesInput,
+  type SessionMessagesStreamInput,
   type SessionListInput,
   type DiscoverySessionInput,
   type DiscoveryCallToolInput,
@@ -64,6 +66,57 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  const messageStreamSubscribers = new Set<number>()
+  const pendingMessageBatch: SessionMessage[] = []
+  let flushTimer: NodeJS.Timeout | null = null
+
+  const clearFlushTimer = (): void => {
+    if (flushTimer !== null) {
+      clearTimeout(flushTimer)
+      flushTimer = null
+    }
+  }
+
+  const flushMessageBatch = (): void => {
+    clearFlushTimer()
+
+    if (pendingMessageBatch.length === 0 || messageStreamSubscribers.size === 0) {
+      pendingMessageBatch.length = 0
+      return
+    }
+
+    const batch = pendingMessageBatch.splice(0, pendingMessageBatch.length)
+
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!messageStreamSubscribers.has(window.webContents.id) || window.isDestroyed()) {
+        continue
+      }
+
+      window.webContents.send(IPC_CHANNELS.mcpSessionMessagesStream, batch)
+    }
+  }
+
+  const scheduleFlush = (): void => {
+    if (flushTimer !== null) {
+      return
+    }
+
+    flushTimer = setTimeout(() => {
+      flushMessageBatch()
+    }, 100)
+  }
+
+  sessionManager.onMessage((message) => {
+    pendingMessageBatch.push(message)
+
+    if (pendingMessageBatch.length >= 50) {
+      flushMessageBatch()
+      return
+    }
+
+    scheduleFlush()
+  })
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -116,6 +169,23 @@ app.whenReady().then(() => {
   ipcMain.handle(IPC_CHANNELS.mcpSessionMessages, (_, input: SessionMessagesInput) => {
     return sessionManager.getMessages(input.sessionId, input.limit)
   })
+
+  ipcMain.handle(
+    IPC_CHANNELS.mcpSessionMessagesStream,
+    (event, input: SessionMessagesStreamInput) => {
+      if (input.enabled) {
+        messageStreamSubscribers.add(event.sender.id)
+      } else {
+        messageStreamSubscribers.delete(event.sender.id)
+      }
+
+      event.sender.once('destroyed', () => {
+        messageStreamSubscribers.delete(event.sender.id)
+      })
+
+      return { ok: true as const }
+    }
+  )
 
   ipcMain.handle(IPC_CHANNELS.mcpSessionList, (_, input?: SessionListInput) => {
     return sessionManager.listSessions(input?.limit)
@@ -174,6 +244,7 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionDisconnect)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionStatus)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionMessages)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSessionMessagesStream)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionList)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListTools)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListResources)

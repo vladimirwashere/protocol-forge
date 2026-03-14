@@ -6,6 +6,70 @@ import type {
   SessionSummary
 } from '../../../shared/ipc'
 
+const ACTIVE_MESSAGE_LIMIT = 100
+
+let unsubscribeMessageStream: (() => void) | null = null
+
+const ensureMessageStreamSubscription = (
+  set: (partial: Partial<SessionStoreState> | ((state: SessionStoreState) => Partial<SessionStoreState> | SessionStoreState)) => void
+): void => {
+  if (unsubscribeMessageStream !== null) {
+    return
+  }
+
+  unsubscribeMessageStream = window.api.subscribeSessionMessages((messages) => {
+    if (messages.length === 0) {
+      return
+    }
+
+    set((state) => {
+      if (!state.sessionStatus) {
+        return state
+      }
+
+      const incomingForActive = messages.filter(
+        (message) => message.sessionId === state.sessionStatus?.sessionId
+      )
+
+      if (incomingForActive.length === 0) {
+        return state
+      }
+
+      const knownIds = new Set(state.sessionMessages.map((message) => message.id))
+      const dedupedIncoming = incomingForActive.filter((message) => !knownIds.has(message.id))
+      if (dedupedIncoming.length === 0) {
+        return state
+      }
+
+      const mergedMessages = [...state.sessionMessages, ...dedupedIncoming]
+      const nextMessages = mergedMessages.slice(-ACTIVE_MESSAGE_LIMIT)
+      const nextMessageCount = state.sessionStatus.messageCount + dedupedIncoming.length
+
+      const nextSessionStatus: SessionStatus = {
+        ...state.sessionStatus,
+        messageCount: nextMessageCount
+      }
+
+      const nextSessionHistory = state.sessionHistory.map((session) => {
+        if (session.sessionId !== nextSessionStatus.sessionId) {
+          return session
+        }
+
+        return {
+          ...session,
+          messageCount: nextMessageCount
+        }
+      })
+
+      return {
+        sessionStatus: nextSessionStatus,
+        sessionMessages: nextMessages,
+        sessionHistory: nextSessionHistory
+      }
+    })
+  })
+}
+
 type SessionStoreState = {
   sessionStatus: SessionStatus | null
   sessionMessages: SessionMessage[]
@@ -37,9 +101,11 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   },
 
   inspectSession: async (sessionId) => {
+    ensureMessageStreamSubscription(set)
+
     const [status, messages] = await Promise.all([
       window.api.getSessionStatus({ sessionId }),
-      window.api.getSessionMessages({ sessionId, limit: 100 })
+      window.api.getSessionMessages({ sessionId, limit: ACTIVE_MESSAGE_LIMIT })
     ])
 
     set({
@@ -49,6 +115,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   },
 
   connectProfile: async (profile) => {
+    ensureMessageStreamSubscription(set)
+
     set({ sessionError: null })
 
     try {
@@ -95,7 +163,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         window.api.getSessionStatus({ sessionId: connected.sessionId }),
         window.api.getSessionMessages({
           sessionId: connected.sessionId,
-          limit: 100
+          limit: ACTIVE_MESSAGE_LIMIT
         })
       ])
 
@@ -113,6 +181,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   },
 
   connectSseUrl: async (url) => {
+    ensureMessageStreamSubscription(set)
+
     set({ sessionError: null })
 
     try {
@@ -127,7 +197,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         window.api.getSessionStatus({ sessionId: connected.sessionId }),
         window.api.getSessionMessages({
           sessionId: connected.sessionId,
-          limit: 100
+          limit: ACTIVE_MESSAGE_LIMIT
         })
       ])
 
@@ -158,7 +228,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         window.api.getSessionStatus({ sessionId: sessionStatus.sessionId }),
         window.api.getSessionMessages({
           sessionId: sessionStatus.sessionId,
-          limit: 100
+          limit: ACTIVE_MESSAGE_LIMIT
         })
       ])
 
@@ -185,7 +255,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     const status = await window.api.getSessionStatus({ sessionId: sessionStatus.sessionId })
     const messages = await window.api.getSessionMessages({
       sessionId: sessionStatus.sessionId,
-      limit: 100
+      limit: ACTIVE_MESSAGE_LIMIT
     })
 
     const updatedHistory = sessionHistory.map((session) => {
@@ -220,6 +290,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   },
 
   hydrateSessionList: async () => {
+    ensureMessageStreamSubscription(set)
+
     const sessions = await window.api.listSessions({ limit: 20 })
 
     set({

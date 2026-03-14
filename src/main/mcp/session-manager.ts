@@ -15,6 +15,7 @@ import type {
   SessionConnectResponse,
   SessionDisconnectInput,
   SessionState,
+  SessionMessage,
   SessionSummary,
   SessionTransport,
   SessionStatus
@@ -61,6 +62,15 @@ export function transitionSessionState(current: SessionState, event: SessionEven
 
 export class SessionManager {
   private readonly sessions = new Map<string, RuntimeSession>()
+  private readonly messageListeners = new Set<(message: SessionMessage) => void>()
+
+  onMessage(listener: (message: SessionMessage) => void): () => void {
+    this.messageListeners.add(listener)
+
+    return () => {
+      this.messageListeners.delete(listener)
+    }
+  }
 
   async connect(input: SessionConnectInput): Promise<SessionConnectResponse> {
     const sessionId = randomUUID()
@@ -387,12 +397,27 @@ export class SessionManager {
     direction: 'outbound' | 'inbound',
     message: JSONRPCMessage
   ): void {
-    insertSessionMessage({
+    const createdAt = new Date().toISOString()
+    const payloadJson = JSON.stringify(message)
+
+    const id = insertSessionMessage({
       sessionId,
       direction,
-      payloadJson: JSON.stringify(message),
-      createdAt: new Date().toISOString()
+      payloadJson,
+      createdAt
     })
+
+    const streamedMessage: SessionMessage = {
+      id,
+      sessionId,
+      direction,
+      payload: message,
+      createdAt
+    }
+
+    for (const listener of this.messageListeners) {
+      listener(streamedMessage)
+    }
   }
 
   private getReadyRuntimeSession(sessionId: string): RuntimeSession {

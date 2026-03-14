@@ -161,15 +161,19 @@ export function insertSessionMessage(input: {
   direction: 'outbound' | 'inbound'
   payloadJson: string
   createdAt: string
-}): void {
+}): number {
   const db = getDatabase()
 
-  db.prepare(
+  const result = db
+    .prepare(
     `
     INSERT INTO messages (session_id, direction, payload_json, created_at)
     VALUES (@sessionId, @direction, @payloadJson, @createdAt)
     `
-  ).run(input)
+    )
+    .run(input)
+
+  return Number(result.lastInsertRowid)
 }
 
 export function countSessionMessages(sessionId: string): number {

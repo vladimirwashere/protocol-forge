@@ -13,6 +13,19 @@ const api: AppApi = {
   disconnectSession: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionDisconnect, input),
   getSessionStatus: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionStatus, input),
   getSessionMessages: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionMessages, input),
+  subscribeSessionMessages: (listener) => {
+    const handler = (_event: unknown, messages: Parameters<typeof listener>[0]) => {
+      listener(messages)
+    }
+
+    ipcRenderer.on(IPC_CHANNELS.mcpSessionMessagesStream, handler)
+    void ipcRenderer.invoke(IPC_CHANNELS.mcpSessionMessagesStream, { enabled: true })
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.mcpSessionMessagesStream, handler)
+      void ipcRenderer.invoke(IPC_CHANNELS.mcpSessionMessagesStream, { enabled: false })
+    }
+  },
   listSessions: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionList, input),
   listTools: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListTools, input),
   listResources: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListResources, input),
