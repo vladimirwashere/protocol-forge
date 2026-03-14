@@ -13,66 +13,43 @@
 | M5 | SSE transport, unified transport factory, URL + header validation, tests |
 | M6 | Dark-mode shell, resizable layout, component split, Zustand stores, status bar, shortcuts |
 | M7 | Discovery IPC handlers, tabbed discovery panel, SchemaForm, invocation flow, result renderer |
+| M8 | Protocol Inspector push stream validated with live MCP server; idle discovery loop fixed |
 
 ## In Progress
 
-**M8 — Protocol Inspector** (parallel with M7)
+**M9 — Session History & Timings**
 
-- [x] Message Zustand store with bounded buffer (300 messages in memory, full in DB)
-- [x] Batched IPC push: main→renderer (flush every 100ms or 50 messages)
-- [x] `SessionManager.onMessage()` listener + `insertSessionMessage` returns row ID
-- [x] Preload `subscribeSessionMessages` bridge with cleanup
-- [x] Session store ingests live stream, deduplicates, caps at 100 active messages
-- [x] Manual virtualized rendering in inspector (spacer-based windowing)
-- [x] Message detail panel with formatted JSON, direction, method, timestamp
-- [x] Filters: direction, method, text search
-- [x] Clear/pause, copy-to-clipboard
-- [ ] Verify with live MCP server (manual smoke test)
+- [ ] Session history UI grouped by server profile
+- [ ] Historical message loading path from SQLite
+- [ ] Latency measurement on tool invocations
+- [ ] Session-level stats (message count, avg latency, error count)
 
-**Status:** Feature-complete pending smoke test verification. All type diagnostics clean.
+**Status:** M8 is complete and validated. M9 implementation has not started yet.
+
+## Completed This Session
+
+- Trimmed context docs (PLAN/STATUS/DECISIONS) to remove redundant detail and keep a lean, accurate project snapshot.
+- Fixed preload bridge exposure sequencing; removed runtime preload dependency issue.
+- Stabilized native SQLite rebuild path for Electron ABI compatibility.
+- Fixed stdio env inheritance/path resolution and optional cwd handling.
+- Stopped idle discovery rehydrate loop caused by unstable effect dependency.
+- Resolved transitive security advisory by pinning `yauzl` to `3.2.1` and validating with typecheck/tests/audit.
+
+## Current Task
+
+- Begin M9 implementation from clean baseline (history UI + DB-backed history load path).
 
 ## What's Next
 
-**M9 — Session History & Timings** (after M8 smoke test passes)
-
-- Session history UI grouped by server
-- Historical message loading from DB
-- Latency measurement on tool invocations
-- Stats per session
+1. Implement session history list grouped by server profile.
+2. Add historical session/message retrieval and selection flow.
+3. Add invocation latency capture and aggregate session stats.
 
 ## Known Issues / Gaps
 
-- `@tanstack/react-virtual` listed in M8 spec but not installed; manual windowing used instead (works, lighter dependency)
-- `tests/discovery-store.test.ts` had 4 reported problems in a prior session — diagnostics now show clean, but runtime test confirmation was blocked by terminal output issues
-- The 1s polling loop in App.tsx (`refreshActiveSessionMessages`) is still active alongside the new push stream — redundant but harmless; can be removed once push stream is verified via smoke test
+- Manual windowing is used instead of `@tanstack/react-virtual` (intentional for M8).
+- Polling fallback for message refresh still exists alongside push stream; remove during M9/M10 cleanup.
 
-## Project Structure
+## Suggested Commit
 
-src/
-├── main/ # Electron main process
-│ ├── index.ts # App entry, IPC handler registration, stream batching
-│ ├── mcp/
-│ │ ├── session-manager.ts # Session lifecycle, discovery, message emit
-│ │ └── transports/ # stdio + SSE transport factories
-│ └── persistence/
-│ ├── database.ts # SQLite connection (WAL, FK)
-│ ├── serverProfilesRepo.ts
-│ └── sessionsRepo.ts # Sessions + messages repo
-├── preload/
-│ └── index.ts # contextBridge, typed AppApi, stream subscription
-├── renderer/src/
-│ ├── App.tsx # Root wiring, effects, keyboard shortcuts
-│ ├── components/
-│ │ ├── discovery/ # DiscoveryPanel (tabbed tools/resources/prompts)
-│ │ ├── forms/ # SchemaForm (JSON Schema → inputs)
-│ │ ├── inspector/ # ProtocolInspector (virtualized message list)
-│ │ ├── layout/ # AppShell, StatusBar
-│ │ ├── results/ # ResultRenderer (JSON tree/raw)
-│ │ ├── sidebar/ # ServerSidebar (profiles, connect)
-│ │ └── workspace/ # WorkspacePanel (session status)
-│ └── stores/ # Zustand: server, session, discovery, message, UI
-├── shared/
-│ ├── ipc.ts # IPC channel map, all types, AppApi contract
-│ ├── constants.ts
-│ └── errors.ts
-tests/ # Vitest unit tests (12 test files)
+`git add context/PLAN.md context/STATUS.md context/DECISIONS.md && git commit -m "chore(context): trim and normalize project context docs" -m "Remove redundant detail, align milestone status, and keep concise planning/decision context for upcoming M9 work."`

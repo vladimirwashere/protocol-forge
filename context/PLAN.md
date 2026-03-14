@@ -2,7 +2,7 @@
 
 ## Build Description
 
-A desktop Electron app for debugging, inspecting, and testing MCP (Model Context Protocol) servers. Phase 1 delivers a fully functional local tool that can connect to any MCP server via stdio or SSE, discover its capabilities, invoke tools/resources/prompts through a schema-driven UI, and display the full JSON-RPC traffic in a real-time protocol inspector.
+Desktop Electron app for debugging, inspecting, and testing MCP (Model Context Protocol) servers. Phase 1 focuses on local workflows: connect via stdio/SSE, discover capabilities, invoke tools/resources/prompts, and inspect JSON-RPC traffic in real time.
 
 **Stack:** Electron 35 · React 19 · TypeScript (strict) · electron-vite · Zustand · Tailwind CSS 4 · SQLite (better-sqlite3) · MCP SDK · Zod · Vitest · pnpm
 
@@ -139,18 +139,11 @@ Each milestone is complete when every criterion in its checklist passes. Do not 
 
 ## Risks & Unknowns
 
-- Electron security hardening can be tricky; need to ensure no Node access in renderer and all IPC channels are safe.
-- Schema-driven UI can get complex, especially with nested objects and arrays. Need to define clear constraints on what Phase 1 supports.
-- Performance of real-time protocol inspector with large message volumes. May need to implement batching and virtualization early.
-- SQLite schema design and migration strategy. Need to keep it simple for Phase 1 but flexible enough for future features.
-- Error handling across async IPC boundaries. Need to ensure errors are propagated and displayed properly in the UI.
-
-Risk,Impact,Mitigation
-better-sqlite3 native rebuild,Build failures,Use electron-builder rebuild config; implement sql.js as a fallback.
-MCP SDK API changes,Transport mismatch,Pin versioning; conduct verification during M4.
-Child process cleanup (stdio),Zombie processes,"Implement explicit cleanup on disconnect, quit, and crash."
-High-volume message streams,UI freezes,"Utilize bounded buffers, virtualization, and batched IPC."
-JSON Schema form scope creep,Delays M7,Strictly scope to flat primitives; document any functional gaps.
+- Electron hardening correctness: keep renderer fully isolated and IPC validated.
+- Schema-form scope creep: maintain strict Phase 1 support boundaries.
+- Inspector performance under high message volume: rely on batching + virtualization.
+- SQLite evolution: defer full migration system until schema stabilizes.
+- Async error propagation across process boundaries: ensure actionable UI errors.
 
 ## Architecture Constraints (non-negotiable)
 
