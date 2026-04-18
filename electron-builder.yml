@@ -2,6 +2,7 @@ appId: io.protocolforge.app
 productName: Protocol Forge
 directories:
   buildResources: build
+afterSign: build/after-sign.cjs
 files:
   - '!**/.vscode/*'
   - '!src/*'
