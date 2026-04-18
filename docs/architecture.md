@@ -123,3 +123,12 @@ Responsibilities:
 3. Expand JSON Schema form support and validation UX.
 4. Add richer diagnostics/export flows for sessions and protocol traces.
 5. Add deeper accessibility and keyboard support for panel resizing and inspector navigation.
+6. Encrypt profile environment variables and SSE headers at rest using Electron
+   `safeStorage`, with a one-shot migration from plaintext rows.
+7. Wire `electron-updater` into the main process so the draft release manifests
+   already emitted by CI drive in-app updates.
+8. Extract the MCP session core (`src/main/mcp/*`) into a workspace package so
+   both the Electron app and a future scriptable CLI (`protocol-forge call`,
+   `protocol-forge inspect`) can import the same validated transports and
+   session logic. Target use cases: MCP server smoke tests in CI, quick
+   terminal-only capability probes.

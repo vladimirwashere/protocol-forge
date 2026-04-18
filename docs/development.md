@@ -128,10 +128,51 @@ pnpm test --run
 - Main-process handlers should throw actionable errors for renderer display.
 - Prefer stable fallback UI over hard crashes (toasts + error boundaries).
 
-## Release Checklist (Phase 1)
+## Release Process
 
-1. Run `pnpm lint`.
-2. Run `pnpm typecheck`.
-3. Run `pnpm test --run`.
-4. Run `pnpm build`.
-5. Verify app menu, session connect/disconnect, discovery invocation, and protocol inspector streaming manually.
+Releases are cut by pushing a `v*.*.*` tag. The `release.yml` workflow builds
+mac, Windows, and Linux artifacts in parallel and uploads them to a draft
+GitHub release (via `electron-builder --publish always`).
+
+### Local pre-flight
+
+Run the same gates CI runs, so a failing build isn't discovered on a tag push:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Manually sanity-check a packaged build on at least one platform:
+
+```bash
+pnpm build:mac   # or :win / :linux
+```
+
+Launch the packaged app, create a stdio profile, connect, list tools, invoke
+one, and watch the Protocol Inspector stream.
+
+### Cutting a release
+
+1. Bump `version` in `package.json` and `APP_VERSION` in
+   `src/shared/constants.ts` (keep these in sync).
+2. Move the `CHANGELOG.md` entry's date to the intended release day.
+3. Commit: `chore(release): bump to vX.Y.Z`.
+4. Tag and push:
+   ```bash
+   git tag vX.Y.Z
+   git push origin main vX.Y.Z
+   ```
+5. Wait for the Release workflow to finish. A draft release with six artifacts
+   (mac dmg + zip, win nsis, linux AppImage + snap + deb) and the
+   `latest*.yml` update manifests will appear under Releases.
+6. Install and smoke-test the draft artifacts on each target OS. Verify the
+   Gatekeeper / SmartScreen first-launch paths documented in the README.
+7. Edit the draft release notes (summarize from `CHANGELOG.md`) and publish.
+
+### Release candidates
+
+Use `vX.Y.Z-rc.N` tags to produce draft releases without touching the
+canonical tag — the tag pattern matches. Delete the draft release afterwards.

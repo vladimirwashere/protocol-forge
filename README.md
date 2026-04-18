@@ -151,8 +151,10 @@ Protocol Forge stores local data in a SQLite database named `protocol-forge.db` 
 
 ## Documentation Index
 
-- [docs/development.md](docs/development.md): setup, scripts, validation, troubleshooting.
+- [docs/development.md](docs/development.md): setup, scripts, validation, troubleshooting, release process.
 - [docs/architecture.md](docs/architecture.md): process model, data flow, security boundaries, limitations.
+- [SECURITY.md](SECURITY.md): trust model, accepted limitations, vulnerability disclosure.
+- [CHANGELOG.md](CHANGELOG.md): release history.
 
 ## Project Status
 
