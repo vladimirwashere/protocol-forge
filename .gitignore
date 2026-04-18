@@ -4,4 +4,4 @@ out
 .DS_Store
 .eslintcache
 *.log*
-.github
+.github/copilot-instructions.md

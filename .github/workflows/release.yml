@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+          - os: windows-latest
+            target: win
+          - os: ubuntu-latest
+            target: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: pnpm/action-setup@71c92474e7e4f5bca283fb17ef80fba9cdb2b4b1 # v6.0.2
+        with:
+          version: 10
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      # Code signing / notarization is not enabled for v0.1.x.
+      # To enable in a future release, add these repo secrets and pass them
+      # through as env on the Package step, then set notarize: true and/or
+      # supply Windows signing config in electron-builder.yml:
+      #   CSC_LINK                    base64 cert or URL to .p12
+      #   CSC_KEY_PASSWORD            cert passphrase
+      #   APPLE_ID                    Apple ID for notarization
+      #   APPLE_APP_SPECIFIC_PASSWORD app-specific password
+      #   APPLE_TEAM_ID               Apple Developer team id
+      - name: Build renderer and main
+        run: pnpm exec electron-vite build
+
+      - name: Package and publish draft release
+        run: pnpm exec electron-builder --${{ matrix.target }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
