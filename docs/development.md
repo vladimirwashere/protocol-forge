@@ -165,9 +165,12 @@ one, and watch the Protocol Inspector stream.
    git tag vX.Y.Z
    git push origin main vX.Y.Z
    ```
-5. Wait for the Release workflow to finish. A draft release with six artifacts
-   (mac dmg + zip, win nsis, linux AppImage + snap + deb) and the
-   `latest*.yml` update manifests will appear under Releases.
+5. Wait for the Release workflow to finish. A draft release with five artifacts
+   (mac dmg + zip, win nsis, linux AppImage + deb) and the `latest*.yml`
+   update manifests will appear under Releases. **Do not publish the draft
+   until all three matrix jobs have completed** — electron-builder refuses
+   to upload to an already-published (non-draft) release, so publishing
+   early will break any job that hasn't finished yet.
 6. Install and smoke-test the draft artifacts on each target OS. Verify the
    Gatekeeper / SmartScreen first-launch paths documented in the README.
 7. Edit the draft release notes (summarize from `CHANGELOG.md`) and publish.
