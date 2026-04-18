@@ -11,6 +11,27 @@ Desktop-first MCP operations console for engineering teams that need reliable pr
 - Inspect live protocol traffic with filters, search, pause/resume, and history.
 - Persist profiles, sessions, and messages in local SQLite storage.
 
+## Installing a Release
+
+Download the installer for your platform from the
+[Releases page](https://github.com/vladimirwashere/protocol-forge/releases).
+
+v0.1.x builds are **unsigned**, so the OS will block them on first launch.
+
+- **macOS**: after copying `Protocol Forge.app` to `/Applications`, clear the
+  quarantine flag once:
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/Protocol Forge.app"
+  ```
+
+  Or right-click the app, choose Open, and confirm the Gatekeeper prompt.
+- **Windows**: SmartScreen will show "Windows protected your PC". Click
+  "More info" then "Run anyway".
+- **Linux**: run the `.AppImage` directly, or install the `.deb` / `.snap`.
+
+See [SECURITY.md](SECURITY.md) for the trust model and current limitations.
+
 ## Tech Stack
 
 - Electron 35
@@ -121,6 +142,12 @@ Protocol Forge stores local data in a SQLite database named `protocol-forge.db` 
 - Strict Electron isolation: `contextIsolation` + `sandbox` + no renderer Node integration.
 - Typed IPC contracts validate trust boundaries in the main process.
 - External server data is treated as untrusted.
+
+> ⚠️ **Data at rest (v0.1.x):** server profile environment variables and SSE
+> headers are persisted to the local SQLite database in plaintext. Do not
+> enter production API tokens or long-lived credentials into Protocol Forge
+> v0.1.x. Encrypted storage via Electron `safeStorage` is planned for v0.2.
+> See [SECURITY.md](SECURITY.md) for the full policy.
 
 ## Documentation Index
 
