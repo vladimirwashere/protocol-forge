@@ -15,7 +15,10 @@ export const IPC_CHANNELS = {
   mcpDiscoveryListPrompts: 'mcp-discovery:list-prompts',
   mcpDiscoveryCallTool: 'mcp-discovery:call-tool',
   mcpDiscoveryReadResource: 'mcp-discovery:read-resource',
-  mcpDiscoveryGetPrompt: 'mcp-discovery:get-prompt'
+  mcpDiscoveryGetPrompt: 'mcp-discovery:get-prompt',
+  appCheckForUpdates: 'app:check-for-updates',
+  appInstallUpdate: 'app:install-update',
+  appUpdateStatusStream: 'app:update-status-stream'
 } as const
 
 export type AppMeta = {
@@ -249,9 +252,23 @@ export type DiscoveryOperationResult = {
   latencyMs?: number
 }
 
+export type UpdateStatus =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }
+
+export type UpdateStatusListener = (status: UpdateStatus) => void
+
 export type AppApi = {
   getAppMeta: () => Promise<AppMeta>
   ping: () => Promise<PingResponse>
+  checkForUpdates: () => Promise<void>
+  installUpdate: () => Promise<void>
+  subscribeUpdateStatus: (listener: UpdateStatusListener) => () => void
   listServerProfiles: () => Promise<ServerProfile[]>
   upsertServerProfile: (input: UpsertServerProfileInput) => Promise<ServerProfile>
   deleteServerProfile: (input: DeleteServerProfileInput) => Promise<{ ok: true }>

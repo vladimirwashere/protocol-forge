@@ -27,6 +27,18 @@ function ToastViewport(): React.JSX.Element | null {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.08em]">{toast.title}</p>
               <p className="mt-1 text-xs opacity-90">{toast.message}</p>
+              {toast.action ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.action?.onClick()
+                    dismissToast(toast.id)
+                  }}
+                  className="mt-2 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-900 hover:bg-white"
+                >
+                  {toast.action.label}
+                </button>
+              ) : null}
             </div>
             <button
               type="button"

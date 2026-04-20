@@ -2,12 +2,18 @@ import { create } from 'zustand'
 
 type ToastKind = 'info' | 'success' | 'error'
 
+export type ToastAction = {
+  label: string
+  onClick: () => void
+}
+
 export type Toast = {
   id: number
   title: string
   message: string
   kind: ToastKind
   createdAt: number
+  action?: ToastAction
 }
 
 type ShowToastInput = {
@@ -15,6 +21,7 @@ type ShowToastInput = {
   message: string
   kind?: ToastKind
   durationMs?: number
+  action?: ToastAction
 }
 
 type ToastStoreState = {
@@ -29,7 +36,7 @@ let nextToastId = 1
 export const useToastStore = create<ToastStoreState>((set) => ({
   toasts: [],
 
-  showToast: ({ title, message, kind = 'info', durationMs = 5000 }) => {
+  showToast: ({ title, message, kind = 'info', durationMs = 5000, action }) => {
     const id = nextToastId
     nextToastId += 1
 
@@ -38,7 +45,8 @@ export const useToastStore = create<ToastStoreState>((set) => ({
       title,
       message,
       kind,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      ...(action ? { action } : {})
     }
 
     set((state) => ({

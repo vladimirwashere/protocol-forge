@@ -29,4 +29,4 @@ Items logged here are NOT bugs. They are improvement opportunities deferred unti
 | ---- | -------- | ------ | -------- | -------- |
 | P1 | M3 | Replace addColumnIfMissing with versioned migration runner | M | M |
 | P5 | M6 | AppShell drag handle: add keyboard resize fallback | S | S |
-| P6 | M8 | Remove 1s polling loop after push stream verified | S | S |
+| ~~P6~~ | ~~M8~~ | ~~Remove 1s polling loop after push stream verified~~ (done in v0.1.1) | S | S |

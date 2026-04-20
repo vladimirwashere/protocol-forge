@@ -13,6 +13,7 @@ import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
 import { useToastStore } from './stores/toast-store'
 import { useUIStore } from './stores/ui-store'
+import { useUpdateStore } from './stores/update-store'
 
 function App(): React.JSX.Element {
   const metaText = useUIStore((state) => state.metaText)
@@ -37,7 +38,6 @@ function App(): React.JSX.Element {
   const refreshSessionHistory = useSessionStore((state) => state.refreshSessionHistory)
   const inspectSession = useSessionStore((state) => state.inspectSession)
   const connectProfile = useSessionStore((state) => state.connectProfile)
-  const connectSseUrl = useSessionStore((state) => state.connectSseUrl)
   const disconnectActiveSession = useSessionStore((state) => state.disconnectActiveSession)
   const refreshActiveSessionMessages = useSessionStore(
     (state) => state.refreshActiveSessionMessages
@@ -71,12 +71,16 @@ function App(): React.JSX.Element {
   const setInspectorSearchFilter = useMessageStore((state) => state.setSearchFilter)
   const showToast = useToastStore((state) => state.showToast)
 
+  const updateStatus = useUpdateStore((state) => state.status)
+  const subscribeUpdate = useUpdateStore((state) => state.subscribe)
+  const installUpdate = useUpdateStore((state) => state.installUpdate)
+
   const sessionId = sessionStatus?.sessionId ?? null
-  const sessionState = sessionStatus?.state ?? null
   const lastDiscoverySessionKeyRef = useRef<string>('')
   const lastSaveErrorRef = useRef<string | null>(null)
   const lastSessionErrorRef = useRef<string | null>(null)
   const lastDiscoveryErrorRef = useRef<string | null>(null)
+  const lastUpdateStateRef = useRef<string>('idle')
 
   useEffect(() => {
     let mounted = true
@@ -103,22 +107,6 @@ function App(): React.JSX.Element {
       mounted = false
     }
   }, [hydrateMeta, refreshProfiles, hydrateSessionList, setSessionError])
-
-  useEffect(() => {
-    if (!sessionId || sessionState === 'disconnected' || sessionState === 'error') {
-      return
-    }
-
-    const timer = window.setInterval(() => {
-      void refreshActiveSessionMessages().catch((error: unknown) => {
-        setSessionError(error instanceof Error ? error.message : 'Failed to refresh session')
-      })
-    }, 1000)
-
-    return () => {
-      window.clearInterval(timer)
-    }
-  }, [refreshActiveSessionMessages, sessionId, sessionState, setSessionError])
 
   useEffect(() => {
     const nextKey = sessionStatus ? `${sessionStatus.sessionId}:${sessionStatus.state}` : 'none'
@@ -200,6 +188,44 @@ function App(): React.JSX.Element {
     })
   }, [discoveryError, showToast])
 
+  useEffect(() => {
+    subscribeUpdate()
+  }, [subscribeUpdate])
+
+  useEffect(() => {
+    if (lastUpdateStateRef.current === updateStatus.state) {
+      return
+    }
+    lastUpdateStateRef.current = updateStatus.state
+
+    if (updateStatus.state === 'available') {
+      showToast({
+        title: 'Update Available',
+        message: `Protocol Forge v${updateStatus.version} is downloading…`,
+        kind: 'info'
+      })
+    } else if (updateStatus.state === 'downloaded') {
+      showToast({
+        title: 'Update Ready',
+        message: `Protocol Forge v${updateStatus.version} is ready to install.`,
+        kind: 'success',
+        durationMs: 0,
+        action: {
+          label: 'Restart',
+          onClick: () => {
+            void installUpdate()
+          }
+        }
+      })
+    } else if (updateStatus.state === 'error') {
+      showToast({
+        title: 'Update Error',
+        message: updateStatus.message,
+        kind: 'error'
+      })
+    }
+  }, [updateStatus, showToast, installUpdate])
+
   return (
     <>
       <AppShell
@@ -214,9 +240,6 @@ function App(): React.JSX.Element {
               setFormField={setFormField}
               onSaveProfile={() => {
                 void saveProfile()
-              }}
-              onConnectSseUrl={(url) => {
-                void connectSseUrl(url)
               }}
               onDeleteProfile={(id) => {
                 void deleteProfile(id)

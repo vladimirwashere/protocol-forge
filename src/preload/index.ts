@@ -31,7 +31,20 @@ const api: AppApi = {
   listPrompts: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListPrompts, input),
   callTool: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryCallTool, input),
   readResource: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryReadResource, input),
-  getPrompt: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryGetPrompt, input)
+  getPrompt: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryGetPrompt, input),
+  checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
+  installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate),
+  subscribeUpdateStatus: (listener) => {
+    const handler = (_event: unknown, status: Parameters<typeof listener>[0]): void => {
+      listener(status)
+    }
+
+    ipcRenderer.on(IPC_CHANNELS.appUpdateStatusStream, handler)
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.appUpdateStatusStream, handler)
+    }
+  }
 }
 
 const electronBridge = {

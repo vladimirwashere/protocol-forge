@@ -25,6 +25,7 @@ import {
 } from './persistence/serverProfilesRepo'
 import { sessionManager } from './mcp/session-manager'
 import type { SessionConnectInput, SessionDisconnectInput, SessionStatusInput } from '../shared/ipc'
+import { checkForUpdates, initAutoUpdater, quitAndInstall } from './updater'
 
 function buildAppMenu(): Menu {
   const isMac = process.platform === 'darwin'
@@ -35,6 +36,13 @@ function buildAppMenu(): Menu {
       label: app.name,
       submenu: [
         { role: 'about' },
+        { type: 'separator' },
+        {
+          label: 'Check for Updates…',
+          click: () => {
+            void checkForUpdates()
+          }
+        },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -107,6 +115,17 @@ function buildAppMenu(): Menu {
     {
       label: 'Help',
       submenu: [
+        ...(isMac
+          ? []
+          : [
+              {
+                label: 'Check for Updates…',
+                click: () => {
+                  void checkForUpdates()
+                }
+              },
+              { type: 'separator' as const }
+            ]),
         {
           label: 'Project Repository',
           click: () => {
@@ -317,7 +336,13 @@ app.whenReady().then(() => {
     return sessionManager.getPrompt(input)
   })
 
+  ipcMain.handle(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
+  ipcMain.handle(IPC_CHANNELS.appInstallUpdate, () => {
+    quitAndInstall()
+  })
+
   createWindow()
+  initAutoUpdater()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -354,6 +379,8 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryCallTool)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryReadResource)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryGetPrompt)
+  ipcMain.removeHandler(IPC_CHANNELS.appCheckForUpdates)
+  ipcMain.removeHandler(IPC_CHANNELS.appInstallUpdate)
 })
 
 // In this file you can include the rest of your app's specific main process
