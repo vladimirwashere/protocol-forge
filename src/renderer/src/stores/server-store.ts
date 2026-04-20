@@ -8,7 +8,7 @@ import {
   parseStdioArgsRaw
 } from './server-store-utils'
 
-export type ProfileTransport = 'stdio' | 'sse'
+export type ProfileTransport = 'stdio' | 'sse' | 'streamable-http'
 
 export type ServerFormState = {
   name: string
@@ -87,7 +87,7 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
             }
           : {
               name: form.name,
-              transport: 'sse',
+              transport: form.transport,
               url: sseUrl,
               headers: parseSseHeadersRaw(form.sseHeadersRaw)
             }

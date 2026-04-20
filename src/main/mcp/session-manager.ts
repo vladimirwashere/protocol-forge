@@ -121,20 +121,37 @@ export class SessionManager {
     const sessionId = randomUUID()
     const connectedAt = new Date().toISOString()
 
-    const persistenceSeed =
-      input.transport === 'stdio'
-        ? {
-            command: input.stdio.command,
-            args: input.stdio.args,
-            cwd: input.stdio.cwd ?? process.cwd(),
-            env: input.stdio.env ?? {}
-          }
-        : {
-            command: 'sse',
-            args: [input.sse.url],
-            cwd: '',
-            env: input.sse.headers ?? {}
-          }
+    const persistenceSeed = ((): {
+      command: string
+      args: string[]
+      cwd: string
+      env: Record<string, string>
+    } => {
+      if (input.transport === 'stdio') {
+        return {
+          command: input.stdio.command,
+          args: input.stdio.args,
+          cwd: input.stdio.cwd ?? process.cwd(),
+          env: input.stdio.env ?? {}
+        }
+      }
+
+      if (input.transport === 'sse') {
+        return {
+          command: 'sse',
+          args: [input.sse.url],
+          cwd: '',
+          env: input.sse.headers ?? {}
+        }
+      }
+
+      return {
+        command: 'streamable-http',
+        args: [input.streamableHttp.url],
+        cwd: '',
+        env: input.streamableHttp.headers ?? {}
+      }
+    })()
 
     insertSessionRecord({
       id: sessionId,

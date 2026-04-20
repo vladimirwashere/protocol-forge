@@ -2,32 +2,54 @@ import { randomUUID } from 'node:crypto'
 import type {
   DeleteServerProfileInput,
   ServerProfile,
+  SessionTransport,
   UpsertServerProfileInput
 } from '../../shared/ipc'
+import { canEncrypt, decryptString, encryptString } from '../security/safe-storage'
 import { getDatabase } from './database'
 
 type ServerProfileRow = {
   id: string
   name: string
-  transport_type: 'stdio' | 'sse'
+  transport_type: SessionTransport
   command: string
   args_json: string
   cwd: string
   url: string | null
   headers_json: string | null
+  headers_enc: Buffer | null
   created_at: string
   updated_at: string
 }
 
+function readHeaders(row: ServerProfileRow): Record<string, string> {
+  if (row.headers_enc !== null && canEncrypt()) {
+    try {
+      return JSON.parse(decryptString(row.headers_enc)) as Record<string, string>
+    } catch {
+      return {}
+    }
+  }
+
+  if (row.headers_json !== null) {
+    return JSON.parse(row.headers_json) as Record<string, string>
+  }
+
+  return {}
+}
+
+const isUrlTransport = (transport: SessionTransport): transport is 'sse' | 'streamable-http' => {
+  return transport === 'sse' || transport === 'streamable-http'
+}
+
 function toServerProfile(row: ServerProfileRow): ServerProfile {
-  if (row.transport_type === 'sse') {
+  if (isUrlTransport(row.transport_type)) {
     return {
       id: row.id,
       name: row.name,
-      transport: 'sse',
+      transport: row.transport_type,
       url: row.url ?? '',
-      headers:
-        row.headers_json !== null ? (JSON.parse(row.headers_json) as Record<string, string>) : {},
+      headers: readHeaders(row),
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }
@@ -84,17 +106,19 @@ function ensureValidInput(input: UpsertServerProfileInput): void {
     return
   }
 
+  const transportLabel = input.transport === 'sse' ? 'SSE' : 'Streamable HTTP'
+
   if (input.url.length === 0) {
-    throw new Error('SSE profile URL is required')
+    throw new Error(`${transportLabel} profile URL is required`)
   }
 
   try {
     const parsed = new URL(input.url)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error('SSE profile URL must use http or https')
+      throw new Error(`${transportLabel} profile URL must use http or https`)
     }
   } catch {
-    throw new Error('SSE profile URL must be valid')
+    throw new Error(`${transportLabel} profile URL must be valid`)
   }
 }
 
@@ -104,7 +128,7 @@ export function listServerProfiles(): ServerProfile[] {
     .prepare(
       `
       SELECT id, name, command, args_json, cwd, created_at, updated_at
-      , transport_type, url, headers_json
+      , transport_type, url, headers_json, headers_enc
       FROM server_profiles
       ORDER BY updated_at DESC
       `

@@ -1,8 +1,9 @@
+import type { SessionTransport } from '../../shared/ipc'
 import { getDatabase } from './database'
 
 type SessionRow = {
   id: string
-  transport_type: 'stdio' | 'sse'
+  transport_type: SessionTransport
   server_profile_id: string | null
   command: string
   args_json: string
@@ -16,7 +17,7 @@ type SessionRow = {
 
 export type SessionRecord = {
   id: string
-  transportType: 'stdio' | 'sse'
+  transportType: SessionTransport
   serverProfileId: string | null
   command: string
   args: string[]
@@ -30,7 +31,7 @@ export type SessionRecord = {
 
 type SessionSummaryRow = {
   id: string
-  transport_type: 'stdio' | 'sse'
+  transport_type: SessionTransport
   server_profile_id: string | null
   server_profile_name: string | null
   status: string
@@ -44,7 +45,7 @@ type SessionSummaryRow = {
 
 export type SessionSummaryRecord = {
   sessionId: string
-  transport: 'stdio' | 'sse'
+  transport: SessionTransport
   serverProfileId: string | null
   serverProfileName: string | null
   state: string
@@ -100,7 +101,7 @@ function mapSessionRow(row: SessionRow): SessionRecord {
 
 export function insertSessionRecord(input: {
   id: string
-  transportType: 'stdio' | 'sse'
+  transportType: SessionTransport
   serverProfileId?: string
   command: string
   args: string[]

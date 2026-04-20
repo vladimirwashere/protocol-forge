@@ -121,7 +121,6 @@ type SessionStoreState = {
   refreshSessionHistory: () => Promise<void>
   inspectSession: (sessionId: string) => Promise<void>
   connectProfile: (profile: ServerProfile) => Promise<void>
-  connectSseUrl: (url: string) => Promise<void>
   disconnectActiveSession: () => Promise<void>
   refreshActiveSessionMessages: () => Promise<void>
   hydrateSessionList: () => Promise<void>
@@ -162,46 +161,53 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     set({ sessionError: null })
 
     try {
-      const connected =
-        profile.transport === 'stdio'
-          ? await (() => {
-              const stdioInput: {
-                command: string
-                args: string[]
-                cwd?: string
-              } = {
-                command: profile.command ?? '',
-                args: normalizeLegacyArgs(profile.args ?? [])
-              }
+      const connected = await (() => {
+        if (profile.transport === 'stdio') {
+          const stdioInput: {
+            command: string
+            args: string[]
+            cwd?: string
+          } = {
+            command: profile.command ?? '',
+            args: normalizeLegacyArgs(profile.args ?? [])
+          }
 
-              if (profile.cwd !== undefined) {
-                stdioInput.cwd = profile.cwd
-              }
+          if (profile.cwd !== undefined) {
+            stdioInput.cwd = profile.cwd
+          }
 
-              return window.api.connectSession({
-                transport: 'stdio',
-                stdio: stdioInput,
-                profileId: profile.id
-              })
-            })()
-          : await (() => {
-              const sseInput: {
-                url: string
-                headers?: Record<string, string>
-              } = {
-                url: profile.url ?? ''
-              }
+          return window.api.connectSession({
+            transport: 'stdio',
+            stdio: stdioInput,
+            profileId: profile.id
+          })
+        }
 
-              if (profile.headers !== undefined) {
-                sseInput.headers = profile.headers
-              }
+        const urlInput: {
+          url: string
+          headers?: Record<string, string>
+        } = {
+          url: profile.url ?? ''
+        }
 
-              return window.api.connectSession({
-                transport: 'sse',
-                sse: sseInput,
-                profileId: profile.id
-              })
-            })()
+        if (profile.headers !== undefined) {
+          urlInput.headers = profile.headers
+        }
+
+        if (profile.transport === 'streamable-http') {
+          return window.api.connectSession({
+            transport: 'streamable-http',
+            streamableHttp: urlInput,
+            profileId: profile.id
+          })
+        }
+
+        return window.api.connectSession({
+          transport: 'sse',
+          sse: urlInput,
+          profileId: profile.id
+        })
+      })()
 
       const [status, messages] = await Promise.all([
         window.api.getSessionStatus({ sessionId: connected.sessionId }),
@@ -220,40 +226,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     } catch (error) {
       set({
         sessionError: error instanceof Error ? error.message : 'Failed to connect'
-      })
-    }
-  },
-
-  connectSseUrl: async (url) => {
-    ensureMessageStreamSubscription(set)
-
-    set({ sessionError: null })
-
-    try {
-      const connected = await window.api.connectSession({
-        transport: 'sse',
-        sse: {
-          url
-        }
-      })
-
-      const [status, messages] = await Promise.all([
-        window.api.getSessionStatus({ sessionId: connected.sessionId }),
-        window.api.getSessionMessages({
-          sessionId: connected.sessionId,
-          limit: ACTIVE_MESSAGE_LIMIT
-        })
-      ])
-
-      set({
-        sessionStatus: status,
-        sessionMessages: messages
-      })
-
-      await get().refreshSessionHistory()
-    } catch (error) {
-      set({
-        sessionError: error instanceof Error ? error.message : 'Failed to connect via SSE'
       })
     }
   },

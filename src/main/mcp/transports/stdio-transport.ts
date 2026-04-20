@@ -1,14 +1,16 @@
 import { isAbsolute } from 'node:path'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
-import type { Transport, TransportSendOptions } from '@modelcontextprotocol/sdk/shared/transport.js'
+import {
+  StdioClientTransport,
+  getDefaultEnvironment
+} from '@modelcontextprotocol/sdk/client/stdio.js'
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { z } from 'zod'
 import { AppError } from '../../../shared/errors'
 import type { StdioConnectInput } from '../../../shared/ipc'
+import { TracingTransport } from './tracing-transport'
+import type { MessageTraceHandler } from './tracing-transport'
 
-export type TraceDirection = 'outbound' | 'inbound'
-
-export type MessageTraceHandler = (direction: TraceDirection, message: JSONRPCMessage) => void
+export type { MessageTraceHandler, TraceDirection } from './tracing-transport'
 
 const envKeySchema = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, 'Invalid env var name')
 
@@ -64,64 +66,12 @@ export function normalizeAndValidateStdioInput(input: StdioConnectInput): SafeSt
   return normalized
 }
 
-class TracingTransport implements Transport {
-  private readonly inner: Transport
-  private readonly onTrace: MessageTraceHandler
-
-  onclose?: () => void
-  onerror?: (error: Error) => void
-  onmessage?: <T extends JSONRPCMessage>(message: T) => void
-  sessionId?: string
-  setProtocolVersion?: (version: string) => void
-
-  constructor(inner: Transport, onTrace: MessageTraceHandler) {
-    this.inner = inner
-    this.onTrace = onTrace
-  }
-
-  async start(): Promise<void> {
-    this.inner.onclose = () => {
-      this.onclose?.()
-    }
-
-    this.inner.onerror = (error) => {
-      this.onerror?.(error)
-    }
-
-    this.inner.onmessage = (message) => {
-      this.onTrace('inbound', message)
-      this.onmessage?.(message)
-    }
-
-    this.inner.setProtocolVersion = (version) => {
-      this.setProtocolVersion?.(version)
-    }
-
-    await this.inner.start()
-    if (this.inner.sessionId !== undefined) {
-      this.sessionId = this.inner.sessionId
-    }
-  }
-
-  async send(message: JSONRPCMessage, options?: TransportSendOptions): Promise<void> {
-    this.onTrace('outbound', message)
-    await this.inner.send(message, options)
-  }
-
-  async close(): Promise<void> {
-    await this.inner.close()
-  }
-}
-
-export function createTracedStdioTransport(
-  input: StdioConnectInput,
-  onTrace: MessageTraceHandler
-): Transport {
-  const validated = normalizeAndValidateStdioInput(input)
-  const inheritedEnv = Object.fromEntries(
-    Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)
-  )
-
+export function buildStdioServerParams(validated: SafeStdioConfig): {
+  command: string
+  args: string[]
+  env: Record<string, string>
+  cwd?: string
+} {
   const serverParams: {
     command: string
     args: string[]
@@ -131,7 +81,7 @@ export function createTracedStdioTransport(
     command: validated.command,
     args: validated.args,
     env: {
-      ...inheritedEnv,
+      ...getDefaultEnvironment(),
       ...validated.env
     }
   }
@@ -139,6 +89,16 @@ export function createTracedStdioTransport(
   if (validated.cwd !== undefined) {
     serverParams.cwd = validated.cwd
   }
+
+  return serverParams
+}
+
+export function createTracedStdioTransport(
+  input: StdioConnectInput,
+  onTrace: MessageTraceHandler
+): Transport {
+  const validated = normalizeAndValidateStdioInput(input)
+  const serverParams = buildStdioServerParams(validated)
 
   const base = new StdioClientTransport(serverParams)
 

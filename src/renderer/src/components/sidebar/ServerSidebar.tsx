@@ -1,5 +1,5 @@
 import type { ServerProfile } from '../../../../shared/ipc'
-import type { ServerFormState } from '../../stores/server-store'
+import type { ProfileTransport, ServerFormState } from '../../stores/server-store'
 
 type ServerSidebarProps = {
   form: ServerFormState
@@ -7,7 +7,6 @@ type ServerSidebarProps = {
   saveError: string | null
   setFormField: <K extends keyof ServerFormState>(field: K, value: ServerFormState[K]) => void
   onSaveProfile: () => void
-  onConnectSseUrl: (url: string) => void
   onDeleteProfile: (id: string) => void
   onConnectProfile: (profile: ServerProfile) => void
 }
@@ -18,7 +17,6 @@ function ServerSidebar({
   saveError,
   setFormField,
   onSaveProfile,
-  onConnectSseUrl,
   onDeleteProfile,
   onConnectProfile
 }: ServerSidebarProps): React.JSX.Element {
@@ -36,11 +34,12 @@ function ServerSidebar({
         />
         <select
           value={form.transport}
-          onChange={(event) => setFormField('transport', event.target.value as 'stdio' | 'sse')}
+          onChange={(event) => setFormField('transport', event.target.value as ProfileTransport)}
           className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
         >
           <option value="stdio">Stdio</option>
           <option value="sse">SSE</option>
+          <option value="streamable-http">Streamable HTTP</option>
         </select>
         {form.transport === 'stdio' ? (
           <>
@@ -68,13 +67,15 @@ function ServerSidebar({
             <input
               value={form.sseUrl}
               onChange={(event) => setFormField('sseUrl', event.target.value)}
-              placeholder="SSE endpoint URL"
+              placeholder={
+                form.transport === 'sse' ? 'SSE endpoint URL' : 'Streamable HTTP endpoint URL'
+              }
               className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
             />
             <textarea
               value={form.sseHeadersRaw}
               onChange={(event) => setFormField('sseHeadersRaw', event.target.value)}
-              placeholder={'SSE headers (optional)\nAuthorization: Bearer token\nX-Trace-Id: 123'}
+              placeholder={'Headers (optional)\nAuthorization: Bearer token\nX-Trace-Id: 123'}
               rows={3}
               className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
             />
@@ -86,20 +87,6 @@ function ServerSidebar({
         >
           Save Profile
         </button>
-        <div className="pt-2">
-          <input
-            value={form.sseUrl}
-            onChange={(event) => setFormField('sseUrl', event.target.value)}
-            placeholder="SSE endpoint URL"
-            className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
-          />
-          <button
-            onClick={() => onConnectSseUrl(form.sseUrl)}
-            className="mt-2 w-full rounded border border-slate-700 px-2 py-1 text-sm text-slate-300"
-          >
-            Connect SSE URL
-          </button>
-        </div>
         {saveError ? <p className="text-xs text-rose-400">{saveError}</p> : null}
       </div>
 

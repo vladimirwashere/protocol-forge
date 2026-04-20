@@ -58,6 +58,13 @@ export type UpsertServerProfileInput =
       url: string
       headers?: Record<string, string>
     }
+  | {
+      id?: string
+      name: string
+      transport: 'streamable-http'
+      url: string
+      headers?: Record<string, string>
+    }
 
 export type DeleteServerProfileInput = {
   id: string
@@ -83,7 +90,12 @@ export type SseConnectInput = {
   headers?: Record<string, string>
 }
 
-export type SessionTransport = 'stdio' | 'sse'
+export type StreamableHttpConnectInput = {
+  url: string
+  headers?: Record<string, string>
+}
+
+export type SessionTransport = 'stdio' | 'sse' | 'streamable-http'
 
 export type SessionConnectInput =
   | {
@@ -94,6 +106,11 @@ export type SessionConnectInput =
   | {
       transport: 'sse'
       sse: SseConnectInput
+      profileId?: string
+    }
+  | {
+      transport: 'streamable-http'
+      streamableHttp: StreamableHttpConnectInput
       profileId?: string
     }
 
