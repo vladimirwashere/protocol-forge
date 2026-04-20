@@ -26,6 +26,9 @@ import {
 import { sessionManager } from './mcp/session-manager'
 import type { SessionConnectInput, SessionDisconnectInput, SessionStatusInput } from '../shared/ipc'
 import { checkForUpdates, initAutoUpdater, quitAndInstall } from './updater'
+import { fixEnvPath } from './fix-env-path'
+
+fixEnvPath()
 
 function buildAppMenu(): Menu {
   const isMac = process.platform === 'darwin'

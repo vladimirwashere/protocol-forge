@@ -5,6 +5,19 @@ All notable changes to Protocol Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- **`stdio` profiles no longer fail with `spawn npx ENOENT` when the app is
+  launched from Finder/Dock on macOS (or a GUI launcher on Linux).** The main
+  process now invokes the user's login shell once at startup to import their
+  real `PATH`, so child processes can resolve Homebrew, nvm, pyenv, and other
+  non-default binaries. Windows is unaffected (GUI-launched processes inherit
+  `PATH` correctly there). If the shell invocation fails (exotic shell, broken
+  rc file, or timeout), the app falls back to the Electron default `PATH`
+  without blocking startup.
+
 ## [0.1.1] - 2026-04-20
 
 ### Added

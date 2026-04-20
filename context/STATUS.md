@@ -25,6 +25,10 @@
 
 **Status:** M1-M10 are complete and validated.
 
+## Completed This Session (Unreleased)
+
+- Imported the user's login-shell `PATH` at main startup (`src/main/fix-env-path.ts`) so stdio MCP servers invoked via `npx`, `python`, `uvx`, etc. resolve when the app is launched from Finder/Dock. No new dependency; silently falls back to Electron's default `PATH` if the shell invocation fails.
+
 ## Completed This Session (v0.1.1)
 
 - Added Streamable HTTP transport end-to-end (IPC variant, transport module, profile CRUD, UI, tests).
