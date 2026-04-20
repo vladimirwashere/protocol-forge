@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- **Captured child-process stderr on stdio connect failures.** The stdio
+  transport now pipes the spawned server's stderr and surfaces the last ~8 KB
+  in the error returned to the UI when a connect fails (`SESSION_CONNECT_FAILED`).
+  Previously these failures showed only the MCP-level message (typically
+  `MCP error -32000: Connection closed`) with no way to see what the server
+  actually complained about. The captured tail is now visible in the
+  session-error toast and the session record.
+
 ### Fixed
 
 - **`stdio` profiles no longer fail with `spawn npx ENOENT` when the app is

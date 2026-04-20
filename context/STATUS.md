@@ -28,6 +28,7 @@
 ## Completed This Session (Unreleased)
 
 - Imported the user's login-shell `PATH` at main startup (`src/main/fix-env-path.ts`) so stdio MCP servers invoked via `npx`, `python`, `uvx`, etc. resolve when the app is launched from Finder/Dock. No new dependency; silently falls back to Electron's default `PATH` if the shell invocation fails.
+- Piped the spawned stdio child's stderr and surfaced the last ~8 KB tail in `SESSION_CONNECT_FAILED` errors. Diagnosed by the error users actually see (e.g. npm 404s, missing node, permission denials) instead of just `MCP error -32000: Connection closed`.
 
 ## Completed This Session (v0.1.1)
 

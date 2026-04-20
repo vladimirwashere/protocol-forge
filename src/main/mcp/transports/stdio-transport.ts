@@ -93,6 +93,59 @@ export function buildStdioServerParams(validated: SafeStdioConfig): {
   return serverParams
 }
 
+const MAX_STDERR_BYTES = 8192
+
+class StderrBuffer {
+  private chunks: Buffer[] = []
+  private totalBytes = 0
+
+  append(chunk: Buffer): void {
+    this.chunks.push(chunk)
+    this.totalBytes += chunk.length
+
+    while (this.totalBytes > MAX_STDERR_BYTES && this.chunks.length > 1) {
+      const removed = this.chunks.shift()
+      if (removed) {
+        this.totalBytes -= removed.length
+      }
+    }
+  }
+
+  tail(): string {
+    if (this.chunks.length === 0) return ''
+    const combined = Buffer.concat(this.chunks).toString('utf8').trim()
+    if (combined.length === 0) return ''
+    // If we truncated the head, prefix a marker so users know there's more.
+    return this.totalBytes >= MAX_STDERR_BYTES ? `…${combined}` : combined
+  }
+}
+
+const stderrRegistry = new WeakMap<Transport, () => string>()
+
+export function getStdioStderrTail(transport: Transport): string {
+  return stderrRegistry.get(transport)?.() ?? ''
+}
+
+class CapturingStdioClientTransport extends StdioClientTransport {
+  readonly stderrBuffer = new StderrBuffer()
+
+  override async start(): Promise<void> {
+    await super.start()
+
+    const stream = this.stderr
+    if (!stream) return
+
+    stream.on('data', (chunk: Buffer | string) => {
+      const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk
+      this.stderrBuffer.append(buf)
+    })
+
+    stream.on('error', () => {
+      // Swallow stream errors — captured output is best-effort.
+    })
+  }
+}
+
 export function createTracedStdioTransport(
   input: StdioConnectInput,
   onTrace: MessageTraceHandler
@@ -100,7 +153,13 @@ export function createTracedStdioTransport(
   const validated = normalizeAndValidateStdioInput(input)
   const serverParams = buildStdioServerParams(validated)
 
-  const base = new StdioClientTransport(serverParams)
+  const base = new CapturingStdioClientTransport({
+    ...serverParams,
+    stderr: 'pipe'
+  })
 
-  return new TracingTransport(base, onTrace)
+  const traced = new TracingTransport(base, onTrace)
+  stderrRegistry.set(traced, () => base.stderrBuffer.tail())
+
+  return traced
 }

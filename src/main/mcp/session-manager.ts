@@ -30,6 +30,8 @@ import {
   updateSessionRecord
 } from '../persistence/sessionsRepo'
 import { createTracedTransport } from './transports/transport-factory'
+import { getStdioStderrTail } from './transports/stdio-transport'
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 
 type SessionEvent = 'start-connect' | 'connected' | 'start-disconnect' | 'disconnected' | 'fail'
 
@@ -165,8 +167,10 @@ export class SessionManager {
       connectedAt
     })
 
+    let transport: Transport | undefined
+
     try {
-      const transport = createTracedTransport(input, (direction, message) => {
+      transport = createTracedTransport(input, (direction, message) => {
         this.captureMessage(sessionId, direction, message)
       })
 
@@ -203,9 +207,13 @@ export class SessionManager {
         state: 'ready'
       }
     } catch (error) {
-      this.setSessionError(sessionId, getErrorMessage(error))
+      const base = getErrorMessage(error)
+      const stderrTail = transport ? getStdioStderrTail(transport) : ''
+      const message = stderrTail ? `${base}\n\nServer stderr:\n${stderrTail}` : base
 
-      throw new AppError('SESSION_CONNECT_FAILED', getErrorMessage(error), {
+      this.setSessionError(sessionId, message)
+
+      throw new AppError('SESSION_CONNECT_FAILED', message, {
         sessionId
       })
     }
