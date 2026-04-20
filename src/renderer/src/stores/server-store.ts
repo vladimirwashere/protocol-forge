@@ -1,14 +1,9 @@
 import { create } from 'zustand'
 import type { ServerProfile, UpsertServerProfileInput } from '../../../shared/ipc'
 
-import {
-  normalizeCommandInput,
-  normalizeSseUrlInput,
-  parseSseHeadersRaw,
-  parseStdioArgsRaw
-} from './server-store-utils'
+import { parseSseHeadersRaw, parseStdioArgsRaw } from './server-store-utils'
 
-export type ProfileTransport = 'stdio' | 'sse' | 'streamable-http'
+export type ProfileTransport = 'stdio' | 'streamable-http'
 
 export type ServerFormState = {
   name: string
@@ -28,6 +23,7 @@ type ServerStoreState = {
   resetForm: () => void
   refreshProfiles: () => Promise<void>
   saveProfile: () => Promise<void>
+  convertLegacySseProfile: (profile: ServerProfile) => Promise<void>
   deleteProfile: (id: string) => Promise<void>
 }
 
@@ -72,9 +68,9 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
     try {
       const { form } = get()
       const args = parseStdioArgsRaw(form.argsRaw)
-      const command = normalizeCommandInput(form.command)
+      const command = form.command.trim()
       const cwd = form.cwd.trim()
-      const sseUrl = normalizeSseUrlInput(form.sseUrl)
+      const sseUrl = form.sseUrl.trim()
 
       const payload: UpsertServerProfileInput =
         form.transport === 'stdio'
@@ -87,7 +83,7 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
             }
           : {
               name: form.name,
-              transport: form.transport,
+              transport: 'streamable-http',
               url: sseUrl,
               headers: parseSseHeadersRaw(form.sseHeadersRaw)
             }
@@ -104,6 +100,30 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
     } catch (error) {
       set({
         saveError: error instanceof Error ? error.message : 'Failed to save profile'
+      })
+    }
+  },
+
+  convertLegacySseProfile: async (profile) => {
+    if (profile.transport !== 'sse') {
+      return
+    }
+
+    set({ saveError: null })
+
+    try {
+      await window.api.upsertServerProfile({
+        id: profile.id,
+        name: profile.name,
+        transport: 'streamable-http',
+        url: (profile.url ?? '').trim(),
+        headers: profile.headers ?? {}
+      })
+
+      await get().refreshProfiles()
+    } catch (error) {
+      set({
+        saveError: error instanceof Error ? error.message : 'Failed to convert legacy SSE profile'
       })
     }
   },

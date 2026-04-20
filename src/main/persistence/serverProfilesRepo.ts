@@ -94,6 +94,11 @@ function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInp
 }
 
 function ensureValidInput(input: UpsertServerProfileInput): void {
+  const transport = input.transport as string
+  if (transport !== 'stdio' && transport !== 'streamable-http') {
+    throw new Error('Unsupported server profile transport')
+  }
+
   if (input.name.length === 0) {
     throw new Error('Server profile name is required')
   }
@@ -106,7 +111,7 @@ function ensureValidInput(input: UpsertServerProfileInput): void {
     return
   }
 
-  const transportLabel = input.transport === 'sse' ? 'SSE' : 'Streamable HTTP'
+  const transportLabel = 'Streamable HTTP'
 
   if (input.url.length === 0) {
     throw new Error(`${transportLabel} profile URL is required`)

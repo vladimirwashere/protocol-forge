@@ -138,15 +138,6 @@ export class SessionManager {
         }
       }
 
-      if (input.transport === 'sse') {
-        return {
-          command: 'sse',
-          args: [input.sse.url],
-          cwd: '',
-          env: input.sse.headers ?? {}
-        }
-      }
-
       return {
         command: 'streamable-http',
         args: [input.streamableHttp.url],

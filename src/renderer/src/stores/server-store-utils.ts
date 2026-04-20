@@ -25,47 +25,9 @@ export const parseSseHeadersRaw = (raw: string): Record<string, string> => {
   return headers
 }
 
-const stripLabeledPrefix = (raw: string, label: string): string => {
-  const trimmed = raw.trim()
-  const prefix = `${label.toLowerCase()}:`
-
-  if (trimmed.toLowerCase().startsWith(prefix)) {
-    return trimmed.slice(prefix.length).trim()
-  }
-
-  return trimmed
-}
-
-export const normalizeCommandInput = (raw: string): string => {
-  return stripLabeledPrefix(raw, 'command')
-}
-
-export const normalizeSseUrlInput = (raw: string): string => {
-  return stripLabeledPrefix(raw, 'url')
-}
-
 export const parseStdioArgsRaw = (raw: string): string[] => {
-  const withoutLabel = stripLabeledPrefix(raw, 'args')
-
-  return withoutLabel
+  return raw
     .split(/\s+/)
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
-}
-
-export const normalizeLegacyArgs = (args: string[]): string[] => {
-  const first = args[0]
-
-  if (first === undefined) {
-    return args
-  }
-
-  const rest = args.slice(1)
-  const normalizedFirst = first.trim().toLowerCase()
-
-  if (normalizedFirst === 'args:' || normalizedFirst === 'args') {
-    return rest
-  }
-
-  return args
 }

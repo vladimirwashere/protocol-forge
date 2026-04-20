@@ -139,25 +139,6 @@ describe('serverProfilesRepo', () => {
     }
   })
 
-  it('round-trips an SSE profile and encrypts headers at rest when safeStorage is available', () => {
-    const saved = upsertServerProfile({
-      name: 'SSE Server',
-      transport: 'sse',
-      url: 'https://example.com/mcp/sse',
-      headers: { Authorization: 'Bearer token' }
-    })
-
-    expect(saved.transport).toBe('sse')
-    expect(state.rows[0].headers_json).toBeNull()
-    expect(state.rows[0].headers_enc).not.toBeNull()
-    expect(state.rows[0].headers_enc!.toString('utf8')).toContain('Bearer token')
-
-    const reread = listServerProfiles()[0]
-    if (reread.transport === 'sse' || reread.transport === 'streamable-http') {
-      expect(reread.headers).toEqual({ Authorization: 'Bearer token' })
-    }
-  })
-
   it('round-trips a Streamable HTTP profile with encrypted headers', () => {
     const saved = upsertServerProfile({
       name: 'HTTP Server',
@@ -182,8 +163,8 @@ describe('serverProfilesRepo', () => {
 
     upsertServerProfile({
       name: 'No Keystore',
-      transport: 'sse',
-      url: 'https://example.com/mcp/sse',
+      transport: 'streamable-http',
+      url: 'https://example.com/mcp',
       headers: { Authorization: 'Bearer plain' }
     })
 
@@ -191,19 +172,39 @@ describe('serverProfilesRepo', () => {
     expect(state.rows[0].headers_json).toBe('{"Authorization":"Bearer plain"}')
 
     const reread = listServerProfiles()[0]
-    if (reread.transport === 'sse') {
+    if (reread.transport === 'streamable-http') {
       expect(reread.headers).toEqual({ Authorization: 'Bearer plain' })
     }
   })
 
-  it('rejects invalid SSE URL', () => {
+  it('rejects invalid Streamable HTTP URL', () => {
     expect(() =>
       upsertServerProfile({
         name: 'Bad',
-        transport: 'sse',
+        transport: 'streamable-http',
         url: 'not-a-url'
       })
     ).toThrow(/URL must be valid/)
+  })
+
+  it('still reads legacy SSE profiles for migration flows', () => {
+    state.rows.push({
+      id: 'legacy-sse-1',
+      name: 'Legacy SSE',
+      transport_type: 'sse',
+      command: 'sse',
+      args_json: '[]',
+      cwd: '',
+      url: 'https://example.com/mcp/sse',
+      headers_json: null,
+      headers_enc: Buffer.from('enc:{"Authorization":"Bearer token"}', 'utf8'),
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z'
+    })
+
+    const listed = listServerProfiles()
+    expect(listed).toHaveLength(1)
+    expect(listed[0].transport).toBe('sse')
   })
 
   it('deletes a profile by id', () => {

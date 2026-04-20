@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  normalizeCommandInput,
-  normalizeLegacyArgs,
-  normalizeSseUrlInput,
   parseSseHeadersRaw,
   parseStdioArgsRaw
 } from '../src/renderer/src/stores/server-store-utils'
@@ -32,35 +29,10 @@ describe('parseStdioArgsRaw', () => {
     expect(parseStdioArgsRaw('foo   bar\tbaz')).toEqual(['foo', 'bar', 'baz'])
   })
 
-  it('strips optional args label prefix', () => {
+  it('keeps labeled input unchanged instead of stripping prefixes', () => {
     expect(parseStdioArgsRaw('args: @modelcontextprotocol/server-everything')).toEqual([
+      'args:',
       '@modelcontextprotocol/server-everything'
     ])
-  })
-})
-
-describe('normalizeCommandInput', () => {
-  it('strips optional command label prefix', () => {
-    expect(normalizeCommandInput('command: npx')).toBe('npx')
-  })
-})
-
-describe('normalizeSseUrlInput', () => {
-  it('strips optional url label prefix', () => {
-    expect(normalizeSseUrlInput('url: https://example.com/mcp/sse')).toBe(
-      'https://example.com/mcp/sse'
-    )
-  })
-})
-
-describe('normalizeLegacyArgs', () => {
-  it('drops accidental leading args label token from stored args', () => {
-    expect(normalizeLegacyArgs(['args:', '@modelcontextprotocol/server-everything'])).toEqual([
-      '@modelcontextprotocol/server-everything'
-    ])
-  })
-
-  it('keeps normal args unchanged', () => {
-    expect(normalizeLegacyArgs(['--foo', 'bar'])).toEqual(['--foo', 'bar'])
   })
 })

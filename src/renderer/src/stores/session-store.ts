@@ -5,7 +5,6 @@ import type {
   SessionStatus,
   SessionSummary
 } from '../../../shared/ipc'
-import { normalizeLegacyArgs } from './server-store-utils'
 
 const ACTIVE_MESSAGE_LIMIT = 100
 
@@ -161,6 +160,14 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     set({ sessionError: null })
 
     try {
+      if (profile.transport === 'sse') {
+        set({
+          sessionError:
+            'Legacy SSE profiles are no longer supported. Convert this profile to Streamable HTTP and reconnect.'
+        })
+        return
+      }
+
       const connected = await (() => {
         if (profile.transport === 'stdio') {
           const stdioInput: {
@@ -169,7 +176,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
             cwd?: string
           } = {
             command: profile.command ?? '',
-            args: normalizeLegacyArgs(profile.args ?? [])
+            args: profile.args ?? []
           }
 
           if (profile.cwd !== undefined) {
@@ -202,11 +209,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
           })
         }
 
-        return window.api.connectSession({
-          transport: 'sse',
-          sse: urlInput,
-          profileId: profile.id
-        })
+        throw new Error('Unsupported profile transport')
       })()
 
       const [status, messages] = await Promise.all([

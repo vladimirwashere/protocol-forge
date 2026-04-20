@@ -57,13 +57,6 @@ export type UpsertServerProfileInput =
   | {
       id?: string
       name: string
-      transport: 'sse'
-      url: string
-      headers?: Record<string, string>
-    }
-  | {
-      id?: string
-      name: string
       transport: 'streamable-http'
       url: string
       headers?: Record<string, string>
@@ -88,11 +81,6 @@ export type StdioConnectInput = {
   env?: Record<string, string>
 }
 
-export type SseConnectInput = {
-  url: string
-  headers?: Record<string, string>
-}
-
 export type StreamableHttpConnectInput = {
   url: string
   headers?: Record<string, string>
@@ -104,11 +92,6 @@ export type SessionConnectInput =
   | {
       transport: 'stdio'
       stdio: StdioConnectInput
-      profileId?: string
-    }
-  | {
-      transport: 'sse'
-      sse: SseConnectInput
       profileId?: string
     }
   | {
