@@ -168,5 +168,5 @@ In scope (Phase 1): App shell, secure IPC, SQLite persistence, stdio + SSE conne
 - Formal SQL migration runner (using addColumnIfMissing guards for now)
 - Full JSON Schema support (Phase 1 covers flat objects, primitives, optional arrays)
 - Plugin/extension system for custom renderers or transports
-- Auto-update mechanism for the app itself
+- ~~Auto-update mechanism for the app itself~~ — shipped in v0.1.1 via `electron-updater`
 - Cloud syncing of profiles or sessions

@@ -103,28 +103,25 @@ Responsibilities:
 - Panel-level error boundaries prevent a single React subtree failure from crashing the entire app view.
 - Session/message persistence preserves historical debugging context after failures.
 
-## Known Limitations (Phase 1)
+## Known Limitations
 
-- SchemaForm intentionally supports a practical JSON Schema subset (flat objects, primitives, optional arrays).
-- Message list uses manual windowing rather than a full virtualizer dependency.
-- SQLite schema evolution still uses `addColumnIfMissing` guards instead of formal versioned migrations.
-- Streamable HTTP session resumption (sessionId + last-event-id) is not yet implemented; every connect creates a new MCP session.
+- `SchemaForm` intentionally supports a practical JSON Schema subset: flat objects, primitives, and optional arrays. Deeply nested or `oneOf`/`anyOf` schemas are not rendered.
+- Message list uses manual windowing rather than a full virtualizer library.
+- SQLite schema evolution uses `addColumnIfMissing` guards rather than a formal versioned migration runner.
+- Streamable HTTP session resumption (`sessionId` + `last-event-id`) is not yet implemented. Every connect starts a new MCP session.
 
-## Tradeoffs
+## Design Tradeoffs
 
-- Manual inspector windowing was chosen to minimize dependencies during Phase 1.
-- Schema-driven forms intentionally implement a scoped JSON Schema subset to avoid unreliable edge-case behavior.
+- Manual inspector windowing keeps the dependency surface small without sacrificing correctness for the expected message volumes.
+- Schema-driven forms implement a scoped JSON Schema subset intentionally — broad schema support introduces edge-case behavior that is difficult to validate against arbitrary server definitions.
 
-## Phase 2 Recommendations
+## Roadmap
 
-1. Replace schema guards with a versioned migration runner and migration table.
-2. Expand JSON Schema form support and validation UX.
-3. Add richer diagnostics/export flows for sessions and protocol traces.
-4. Add deeper accessibility and keyboard support for panel resizing and inspector navigation.
-5. Streamable HTTP session resumption: persist `sessionId` and last event id
-   per profile to resume interrupted sessions without starting over.
-6. Extract the MCP session core (`src/main/mcp/*`) into a workspace package so
-   both the Electron app and a future scriptable CLI (`protocol-forge call`,
-   `protocol-forge inspect`) can import the same validated transports and
-   session logic. Target use cases: MCP server smoke tests in CI, quick
-   terminal-only capability probes.
+Items deferred from the current release, ordered roughly by value:
+
+1. **Versioned migration runner** — replace `addColumnIfMissing` guards with a migration table and numbered migration files.
+2. **Expanded JSON Schema form support** — `oneOf`/`anyOf`, nested objects, and richer validation UX.
+3. **Session and trace export** — export protocol traces or session summaries for offline analysis, bug reports, or CI integration.
+4. **Streamable HTTP session resumption** — persist `sessionId` and `last-event-id` per profile so reconnects resume rather than restart.
+5. **Accessibility and keyboard support** — keyboard resize for panel drag handles, full keyboard navigation in the inspector.
+6. **Scriptable CLI** — extract `src/main/mcp/*` into a workspace package shared by the Electron app and a future `protocol-forge` CLI (`call`, `inspect` subcommands) for use in CI smoke tests and terminal workflows.
