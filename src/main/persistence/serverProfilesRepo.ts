@@ -79,7 +79,7 @@ function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInp
         }
       : {
           name: input.name.trim(),
-          transport: 'sse',
+          transport: input.transport,
           url: input.url.trim(),
           headers: Object.fromEntries(
             Object.entries(input.headers ?? {}).map(([key, value]) => [key.trim(), value.trim()])
@@ -152,6 +152,12 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
 
   const createdAt = existing?.created_at ?? now
 
+  const headersPlain = input.transport === 'stdio' ? null : JSON.stringify(input.headers ?? {})
+  const encryptionAvailable = canEncrypt()
+  const headersEnc =
+    headersPlain !== null && encryptionAvailable ? encryptString(headersPlain) : null
+  const headersJson = headersPlain !== null && !encryptionAvailable ? headersPlain : null
+
   db.prepare(
     `
     INSERT INTO server_profiles (
@@ -163,6 +169,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
       cwd,
       url,
       headers_json,
+      headers_enc,
       created_at,
       updated_at
     )
@@ -175,6 +182,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
       @cwd,
       @url,
       @headersJson,
+      @headersEnc,
       @createdAt,
       @updatedAt
     )
@@ -186,17 +194,19 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
       cwd = excluded.cwd,
       url = excluded.url,
       headers_json = excluded.headers_json,
+      headers_enc = excluded.headers_enc,
       updated_at = excluded.updated_at
     `
   ).run({
     id,
     name: input.name,
     transportType: input.transport,
-    command: input.transport === 'stdio' ? input.command : 'sse',
+    command: input.transport === 'stdio' ? input.command : input.transport,
     argsJson: JSON.stringify(input.transport === 'stdio' ? input.args : []),
     cwd: input.transport === 'stdio' ? (input.cwd ?? '') : '',
-    url: input.transport === 'sse' ? input.url : null,
-    headersJson: input.transport === 'sse' ? JSON.stringify(input.headers ?? {}) : null,
+    url: input.transport === 'stdio' ? null : input.url,
+    headersJson,
+    headersEnc,
     createdAt,
     updatedAt: now
   })
@@ -205,7 +215,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
     .prepare(
       `
       SELECT id, name, command, args_json, cwd, created_at, updated_at
-      , transport_type, url, headers_json
+      , transport_type, url, headers_json, headers_enc
       FROM server_profiles
       WHERE id = ?
       `

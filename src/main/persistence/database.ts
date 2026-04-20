@@ -2,8 +2,10 @@ import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { canEncrypt, encryptString } from '../security/safe-storage'
 
 let db: Database.Database | null = null
+let linuxKeystoreWarningLogged = false
 
 function addColumnIfMissing(db: Database.Database, table: string, definition: string): void {
   const columnName = definition.split(' ')[0]
