@@ -71,11 +71,93 @@ function openDatabase(): Database.Database {
   addColumnIfMissing(instance, 'server_profiles', "transport_type TEXT NOT NULL DEFAULT 'stdio'")
   addColumnIfMissing(instance, 'server_profiles', 'url TEXT')
   addColumnIfMissing(instance, 'server_profiles', 'headers_json TEXT')
+  addColumnIfMissing(instance, 'server_profiles', 'headers_enc BLOB')
   addColumnIfMissing(instance, 'sessions', 'server_profile_id TEXT')
   addColumnIfMissing(instance, 'messages', 'latency_ms REAL')
   addColumnIfMissing(instance, 'messages', 'is_error INTEGER NOT NULL DEFAULT 0')
 
+  migratePlaintextHeaders(instance)
+  reapOrphanedSessions(instance)
+
   return instance
+}
+
+export function reapOrphanedSessions(instance: Database.Database): void {
+  instance
+    .prepare(
+      `
+      UPDATE sessions
+      SET status = 'disconnected',
+          disconnected_at = COALESCE(disconnected_at, @now)
+      WHERE status IN ('connecting', 'initializing', 'ready', 'disconnecting')
+      `
+    )
+    .run({ now: new Date().toISOString() })
+}
+
+export function migratePlaintextHeaders(instance: Database.Database): void {
+  if (!canEncrypt()) {
+    const plaintextCount = (
+      instance
+        .prepare(
+          `
+          SELECT COUNT(*) AS count
+          FROM server_profiles
+          WHERE headers_json IS NOT NULL
+            AND headers_enc IS NULL
+            AND transport_type IN ('sse', 'streamable-http')
+          `
+        )
+        .get() as { count: number }
+    ).count
+
+    if (plaintextCount > 0 && !linuxKeystoreWarningLogged) {
+      linuxKeystoreWarningLogged = true
+      console.warn(
+        '[protocol-forge] OS keystore unavailable (safeStorage). SSE/Streamable HTTP profile headers remain in plaintext on disk.'
+      )
+    }
+
+    return
+  }
+
+  const rows = instance
+    .prepare(
+      `
+      SELECT id, headers_json
+      FROM server_profiles
+      WHERE headers_json IS NOT NULL
+        AND headers_enc IS NULL
+        AND transport_type IN ('sse', 'streamable-http')
+      `
+    )
+    .all() as Array<{ id: string; headers_json: string }>
+
+  if (rows.length === 0) {
+    return
+  }
+
+  const update = instance.prepare(
+    `
+    UPDATE server_profiles
+    SET headers_enc = @headersEnc,
+        headers_json = NULL
+    WHERE id = @id
+    `
+  )
+
+  const runMigration = instance.transaction(
+    (toMigrate: Array<{ id: string; headers_json: string }>) => {
+      for (const row of toMigrate) {
+        update.run({
+          id: row.id,
+          headersEnc: encryptString(row.headers_json)
+        })
+      }
+    }
+  )
+
+  runMigration(rows)
 }
 
 export function getDatabase(): Database.Database {
