@@ -5,6 +5,49 @@ All notable changes to Protocol Forge are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-04-20
+
+### Added
+
+- **Streamable HTTP transport**, the MCP spec successor to SSE. Server
+  profiles and session connects now accept `transport: streamable-http`
+  end-to-end.
+- **Auto-update**: the main process wires `electron-updater` against the
+  draft-release manifests already published by CI. The app checks on
+  launch, shows a toast when an update is available, and offers a
+  one-click "Restart" action once an update is downloaded. A
+  "Check for Updates…" menu item is also available under the app menu
+  (macOS) / Help menu (Windows/Linux).
+- **Encrypted storage** for `sse` and `streamable-http` profile request
+  headers. Headers are written via Electron `safeStorage` (Keychain on
+  macOS, DPAPI on Windows, libsecret on Linux) into a new `headers_enc`
+  column. Existing plaintext rows from v0.1.0 are migrated in place on
+  first launch. On Linux hosts without a libsecret-compatible keyring,
+  Protocol Forge logs a warning and falls back to plaintext.
+
+### Changed
+
+- **Breaking (stdio profiles):** spawned stdio MCP servers now inherit
+  only the SDK's default environment allowlist (`PATH`, `HOME`, `USER`,
+  and platform equivalents) instead of the full host `process.env`.
+  Servers that relied on arbitrary host env vars (`NODE_PATH`,
+  `PYTHONPATH`, custom language config) need an explicit entry in the
+  profile's env field. User-supplied env entries still override the
+  allowlist.
+- Extracted the shared `TracingTransport` wrapper into its own module
+  (`src/main/mcp/transports/tracing-transport.ts`) so all three
+  transports consume a single implementation.
+
+### Fixed
+
+- Removed a stray duplicate SSE URL input that rendered in the sidebar
+  regardless of the selected transport.
+- Removed the 1 s polling fallback that duplicated the
+  `mcpSessionMessagesStream` push stream. Protocol Inspector now relies
+  on the push path end-to-end.
+
+[0.1.1]: https://github.com/vladimirwashere/protocol-forge/releases/tag/v0.1.1
+
 ## [0.1.0] - 2026-04-18
 
 First public release. Covers the Phase 1 milestone set (M1–M10).

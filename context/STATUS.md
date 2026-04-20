@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-03-14
+**Last updated:** 2026-04-20
 
 ## Completed Milestones
 
@@ -25,7 +25,18 @@
 
 **Status:** M1-M10 are complete and validated.
 
-## Completed This Session
+## Completed This Session (v0.1.1)
+
+- Added Streamable HTTP transport end-to-end (IPC variant, transport module, profile CRUD, UI, tests).
+- Encrypted SSE and Streamable HTTP profile headers at rest via Electron `safeStorage`, with one-shot migration from plaintext rows on boot.
+- Restricted stdio child-process env to the MCP SDK's default allowlist; user-supplied env entries still override it.
+- Wired `electron-updater` with an in-app UI: toast on available/downloaded, Restart action, and "Check for Updates…" menu items.
+- Deleted the stray duplicate SSE URL input in the sidebar.
+- Retired the 1 s polling loop (decision P6) in favor of the push stream.
+- Extracted the shared `TracingTransport` wrapper into its own module.
+- Bumped version to v0.1.1; refreshed README, SECURITY.md, and architecture/development docs.
+
+## Completed (Phase 1)
 
 - Diagnosed stdio connect failures (`MCP error -32000: Connection closed`) to malformed saved args containing a literal `args:` token (`["args:", "@modelcontextprotocol/server-everything"]`).
 - Added renderer-side input sanitization for labeled entries (`command:`, `args:`, `url:`) and connect-time normalization for legacy saved `args:` tokens.
@@ -50,4 +61,4 @@
 ## Known Issues / Gaps
 
 - Manual windowing is used instead of `@tanstack/react-virtual` (intentional for M8).
-- Polling fallback for message refresh still exists alongside push stream; defer removal to next optimization pass.
+- Streamable HTTP session resumption (sessionId + last-event-id) is not yet implemented; every connect creates a fresh MCP session.

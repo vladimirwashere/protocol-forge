@@ -86,12 +86,18 @@ args: @modelcontextprotocol/server-everything
 
 Configure a profile with transport `sse` and set `url`.
 
+### Streamable HTTP server
+
+Configure a profile with transport `streamable-http` and set `url`. The
+MCP specification deprecated SSE on 2025-03-26, so prefer Streamable HTTP
+against any server that supports it.
+
 ## Debugging Playbook
 
 ### Session fails to connect
 
-- For `stdio`, validate command/args/cwd and run the command manually from the same directory.
-- For `sse`, verify endpoint URL, scheme (`http`/`https`), and required headers.
+- For `stdio`, validate command/args/cwd and run the command manually from the same directory. Stdio child processes inherit only the MCP SDK's default env allowlist — if your server needs other host vars (`NODE_PATH`, `PYTHONPATH`, etc.), add them to the profile's env field.
+- For `sse` / `streamable-http`, verify endpoint URL, scheme (`http`/`https`), and required headers.
 - Profile input tolerates optional labels like `command:`, `args:`, and `url:`. They are sanitized on save.
 - Legacy saved stdio args that accidentally start with `args:` are normalized at connect time.
 

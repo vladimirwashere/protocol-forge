@@ -2,7 +2,7 @@
 
 ## Overview
 
-Protocol Forge is a desktop Electron app for inspecting and testing MCP servers over `stdio` and `SSE` transports.
+Protocol Forge is a desktop Electron app for inspecting and testing MCP servers over `stdio`, `SSE`, and `Streamable HTTP` transports.
 
 Runtime is split across the standard Electron trust boundaries:
 
@@ -32,7 +32,7 @@ Responsibilities:
 Key modules:
 
 - `mcp/session-manager.ts`: session lifecycle, discovery invocation, latency/error metadata capture, message persistence.
-- `mcp/transports/*`: concrete `stdio` and `sse` transport adapters plus factory selection.
+- `mcp/transports/*`: concrete `stdio`, `sse`, and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
 - `persistence/database.ts`: SQLite initialization and schema guards.
 - `persistence/*Repo.ts`: repository layer for profiles/sessions/messages.
 
@@ -63,7 +63,7 @@ Responsibilities:
 
 ### 2. Session lifecycle
 
-1. Renderer requests connect (`stdio` or `sse`) for a profile.
+1. Renderer requests connect (`stdio`, `sse`, or `streamable-http`) for a profile.
 2. Main delegates to session manager, which initializes transport and MCP client.
 3. Session state transitions are persisted and exposed via status/list IPC.
 4. Disconnect/shutdown closes active transport and records terminal state.
@@ -107,27 +107,23 @@ Responsibilities:
 
 - SchemaForm intentionally supports a practical JSON Schema subset (flat objects, primitives, optional arrays).
 - Message list uses manual windowing rather than a full virtualizer dependency.
-- Polling fallback for message refresh still exists alongside push streaming.
 - SQLite schema evolution still uses `addColumnIfMissing` guards instead of formal versioned migrations.
+- Streamable HTTP session resumption (sessionId + last-event-id) is not yet implemented; every connect creates a new MCP session.
 
 ## Tradeoffs
 
 - Manual inspector windowing was chosen to minimize dependencies during Phase 1.
-- Polling fallback remains as a resilience mechanism while push-stream behavior continues to be validated.
 - Schema-driven forms intentionally implement a scoped JSON Schema subset to avoid unreliable edge-case behavior.
 
 ## Phase 2 Recommendations
 
 1. Replace schema guards with a versioned migration runner and migration table.
-2. Remove polling fallback once push-only streaming reliability is confirmed.
-3. Expand JSON Schema form support and validation UX.
-4. Add richer diagnostics/export flows for sessions and protocol traces.
-5. Add deeper accessibility and keyboard support for panel resizing and inspector navigation.
-6. Encrypt profile environment variables and SSE headers at rest using Electron
-   `safeStorage`, with a one-shot migration from plaintext rows.
-7. Wire `electron-updater` into the main process so the draft release manifests
-   already emitted by CI drive in-app updates.
-8. Extract the MCP session core (`src/main/mcp/*`) into a workspace package so
+2. Expand JSON Schema form support and validation UX.
+3. Add richer diagnostics/export flows for sessions and protocol traces.
+4. Add deeper accessibility and keyboard support for panel resizing and inspector navigation.
+5. Streamable HTTP session resumption: persist `sessionId` and last event id
+   per profile to resume interrupted sessions without starting over.
+6. Extract the MCP session core (`src/main/mcp/*`) into a workspace package so
    both the Electron app and a future scriptable CLI (`protocol-forge call`,
    `protocol-forge inspect`) can import the same validated transports and
    session logic. Target use cases: MCP server smoke tests in CI, quick

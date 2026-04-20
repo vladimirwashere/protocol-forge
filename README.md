@@ -4,8 +4,8 @@ Desktop-first MCP operations console for engineering teams that need reliable pr
 
 ## What It Does
 
-- Connect to MCP servers over `stdio` and `sse`.
-- Save and reuse server profiles.
+- Connect to MCP servers over `stdio`, `sse`, and `streamable-http`.
+- Save and reuse server profiles (request headers for `sse` and `streamable-http` are encrypted at rest via the OS keystore).
 - Discover tools, resources, and prompts for the active session.
 - Invoke tools and inspect results with latency metadata.
 - Inspect live protocol traffic with filters, search, pause/resume, and history.
@@ -30,11 +30,15 @@ v0.1.x builds are **unsigned**, so the OS will block them on first launch.
   "More info" then "Run anyway".
 - **Linux**: run the `.AppImage` directly, or install the `.deb` / `.snap`.
 
+Protocol Forge checks for new releases on launch and surfaces an in-app
+notification when an update is downloaded, so subsequent releases reach
+you without a manual download.
+
 See [SECURITY.md](SECURITY.md) for the trust model and current limitations.
 
 ## Tech Stack
 
-- Electron 35
+- Electron 39
 - React 19 + TypeScript (strict)
 - Zustand for renderer state
 - SQLite via `better-sqlite3`
@@ -85,7 +89,7 @@ pnpm build:linux
 
 ## Typical User Workflow
 
-1. Create a server profile in the sidebar (`stdio` or `sse`).
+1. Create a server profile in the sidebar (`stdio`, `sse`, or `streamable-http`).
 2. Connect the profile and wait for session state `ready`.
 3. Open Discovery and load tools/resources/prompts.
 4. Invoke a tool or read a resource/prompt.
@@ -115,6 +119,17 @@ headers: optional key/value headers
 Note: `url:` labels are sanitized on save.
 ```
 
+### Streamable HTTP profile
+
+```text
+transport: streamable-http
+url: https://example.com/mcp
+headers: optional key/value headers
+```
+
+The MCP specification deprecated SSE on 2025-03-26 in favor of Streamable
+HTTP. Prefer Streamable HTTP against any server that supports it.
+
 ## Debugging and Operations
 
 ### Where data is stored
@@ -127,8 +142,8 @@ Protocol Forge stores local data in a SQLite database named `protocol-forge.db` 
 
 ### Common failure patterns
 
-- `stdio` connection fails: verify command/args/cwd, and ensure the MCP server binary can be launched from that context.
-- `sse` connection fails: verify URL scheme is `http` or `https`, endpoint path, and auth headers.
+- `stdio` connection fails: verify command/args/cwd, and ensure the MCP server binary can be launched from that context. Spawned servers inherit only the MCP SDK's default env allowlist (`PATH`, `HOME`, `USER`, platform equivalents); if your server needs other host env vars, add them to the profile's env.
+- `sse` / `streamable-http` connection fails: verify URL scheme is `http` or `https`, endpoint path, and auth headers.
 - Discovery is empty: ensure the session is `ready` before listing capabilities.
 
 ### Runtime inspection tips
@@ -142,12 +157,14 @@ Protocol Forge stores local data in a SQLite database named `protocol-forge.db` 
 - Strict Electron isolation: `contextIsolation` + `sandbox` + no renderer Node integration.
 - Typed IPC contracts validate trust boundaries in the main process.
 - External server data is treated as untrusted.
+- Request headers for `sse` and `streamable-http` profiles are encrypted at
+  rest via the OS keystore (Keychain on macOS, DPAPI on Windows, libsecret
+  on Linux). On Linux hosts without a libsecret-compatible keyring,
+  Protocol Forge logs a warning and falls back to plaintext storage.
+- Spawned `stdio` servers inherit only the MCP SDK's default env allowlist;
+  arbitrary host env vars are not leaked into child processes.
 
-> ⚠️ **Data at rest (v0.1.x):** server profile environment variables and SSE
-> headers are persisted to the local SQLite database in plaintext. Do not
-> enter production API tokens or long-lived credentials into Protocol Forge
-> v0.1.x. Encrypted storage via Electron `safeStorage` is planned for v0.2.
-> See [SECURITY.md](SECURITY.md) for the full policy.
+See [SECURITY.md](SECURITY.md) for the full policy.
 
 ## Documentation Index
 
