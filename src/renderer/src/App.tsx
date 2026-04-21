@@ -18,8 +18,11 @@ import { useUpdateStore } from './stores/update-store'
 function App(): React.JSX.Element {
   const metaText = useUIStore((state) => state.metaText)
   const hydrateMeta = useUIStore((state) => state.hydrateMeta)
-  const inspectorHeight = useUIStore((state) => state.inspectorHeight)
-  const setInspectorHeight = useUIStore((state) => state.setInspectorHeight)
+  const inspectorView = useUIStore((state) => state.inspectorView)
+  const setInspectorView = useUIStore((state) => state.setInspectorView)
+  const cycleInspectorView = useUIStore((state) => state.cycleInspectorView)
+  const narrowTab = useUIStore((state) => state.narrowTab)
+  const setNarrowTab = useUIStore((state) => state.setNarrowTab)
 
   const profiles = useServerStore((state) => state.profiles)
   const form = useServerStore((state) => state.form)
@@ -225,8 +228,11 @@ function App(): React.JSX.Element {
   return (
     <>
       <AppShell
-        inspectorHeight={inspectorHeight}
-        onInspectorHeightChange={setInspectorHeight}
+        inspectorView={inspectorView}
+        onSetInspectorView={setInspectorView}
+        onCycleInspectorView={cycleInspectorView}
+        narrowTab={narrowTab}
+        onSetNarrowTab={setNarrowTab}
         sidebar={
           <SectionErrorBoundary sectionName="Sidebar">
             <ServerSidebar
