@@ -82,9 +82,9 @@ command: npx
 args: @modelcontextprotocol/server-everything
 ```
 
-### SSE server
+### Legacy SSE profile migration
 
-Configure a profile with transport `sse` and set `url`.
+SSE transport creation/connection is removed. Existing `sse` profiles can be converted in-app to `streamable-http` from the server list.
 
 ### Streamable HTTP server
 
@@ -97,9 +97,8 @@ against any server that supports it.
 ### Session fails to connect
 
 - For `stdio`, validate command/args/cwd and run the command manually from the same directory. Stdio child processes inherit only the MCP SDK's default env allowlist — if your server needs other host vars (`NODE_PATH`, `PYTHONPATH`, etc.), add them to the profile's env field.
-- For `sse` / `streamable-http`, verify endpoint URL, scheme (`http`/`https`), and required headers.
-- Profile input tolerates optional labels like `command:`, `args:`, and `url:`. They are sanitized on save.
-- Legacy saved stdio args that accidentally start with `args:` are normalized at connect time.
+- For `streamable-http`, verify endpoint URL, scheme (`http`/`https`), and required headers.
+- Profile input is now strict: labeled tokens like `command:` and `args:` are treated as literal input.
 
 ### Discovery calls fail
 
@@ -126,7 +125,7 @@ pnpm test --run
 - Native dependency build errors: run `pnpm install` again and ensure your system toolchain is available.
 - Session connect failures: verify command/url and inspect protocol errors in the inspector.
 - Empty discovery lists: ensure session state is `ready` before listing tools/resources/prompts.
-- If a profile still fails after edits, re-save it once so stored fields are normalized.
+- If a profile still fails after edits, re-save it once to ensure current validation rules are applied.
 
 ## Error Handling Expectations
 

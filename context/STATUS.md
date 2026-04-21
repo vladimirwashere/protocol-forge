@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-21
 
 ## Completed Milestones
 
@@ -27,6 +27,13 @@
 
 ## Completed This Session (Unreleased)
 
+- Removed active SSE support from profile creation and session connect paths; app now supports `stdio` and `streamable-http` for new connections.
+- Added legacy migration flow in the sidebar: old `sse` profiles remain visible, show a migration warning, and can be converted in-place to `streamable-http`.
+- Removed renderer-side labeled-input sanitization (`command:`, `args:`, `url:`) and removed legacy `args:` token normalization at connect time; profile input is now strict/literal.
+- Removed obsolete `@electron-toolkit/preload` dependency from `package.json` and deleted unused `src/renderer/src/components/Versions.tsx`.
+- Removed dead settings shortcut placeholder (`Cmd+,`) that only surfaced a "coming later" message.
+- Deleted legacy SSE transport implementation/tests and updated factory/repository/store tests for the new transport surface.
+- Updated README and docs to reflect the current transport policy and legacy migration behavior.
 - Imported the user's login-shell `PATH` at main startup (`src/main/fix-env-path.ts`) so stdio MCP servers invoked via `npx`, `python`, `uvx`, etc. resolve when the app is launched from Finder/Dock. No new dependency; silently falls back to Electron's default `PATH` if the shell invocation fails.
 - Piped the spawned stdio child's stderr and surfaced the last ~8 KB tail in `SESSION_CONNECT_FAILED` errors. Diagnosed by the error users actually see (e.g. npm 404s, missing node, permission denials) instead of just `MCP error -32000: Connection closed`.
 
@@ -44,8 +51,8 @@
 ## Completed (Phase 1)
 
 - Diagnosed stdio connect failures (`MCP error -32000: Connection closed`) to malformed saved args containing a literal `args:` token (`["args:", "@modelcontextprotocol/server-everything"]`).
-- Added renderer-side input sanitization for labeled entries (`command:`, `args:`, `url:`) and connect-time normalization for legacy saved `args:` tokens.
-- Added tests for new command/args/url sanitizers and legacy args normalization behavior.
+- Added renderer-side input sanitization for labeled entries (`command:`, `args:`, `url:`) and connect-time normalization for legacy saved `args:` tokens (later superseded by strict literal-input handling in 2026-04-21 cleanup).
+- Added tests for command/args/url sanitizers and legacy args normalization behavior (later updated when strict literal-input handling replaced sanitization).
 - Fixed sandbox preload startup failure by removing `@electron-toolkit/preload` runtime import and exposing a local `window.electron.process.versions` bridge so `window.api` registers reliably in renderer.
 - Extended session/message IPC contracts for M9 stats fields (`errorCount`, `avgLatencyMs`, `durationMs`) and optional profile linkage.
 - Added SQLite schema backfills for `sessions.server_profile_id`, `messages.latency_ms`, and `messages.is_error`.
