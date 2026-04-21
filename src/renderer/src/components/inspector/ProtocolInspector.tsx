@@ -207,7 +207,7 @@ function ProtocolInspector({
             </button>
           </div>
 
-          <div className="grid gap-2 rounded border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-300 md:grid-cols-3">
+          <div className="grid gap-2 rounded border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-300 grid-cols-3">
             <label className="space-y-1">
               <span className="block text-slate-500">Direction</span>
               <select
@@ -249,13 +249,13 @@ function ProtocolInspector({
 
           <div className="text-xs text-slate-500">Visible messages: {filteredMessages.length}</div>
 
-          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid gap-2 grid-cols-2">
             <div
               ref={listContainerRef}
               onScroll={(event) => {
                 setVirtualScrollTop(event.currentTarget.scrollTop)
               }}
-              className="max-h-56 space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2"
+              className="max-h-[min(14rem,40vh)] space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2"
             >
               {filteredMessages.length === 0 ? (
                 <p className="text-xs text-slate-500">No captured messages yet.</p>
@@ -308,7 +308,7 @@ function ProtocolInspector({
               )}
             </div>
 
-            <div className="max-h-56 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2">
+            <div className="max-h-[min(14rem,40vh)] overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2">
               {selectedMessage ? (
                 <>
                   <div className="mb-2 flex items-center justify-between text-xs">
