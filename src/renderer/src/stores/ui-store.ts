@@ -1,28 +1,46 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
-import { clampInspectorHeight } from './ui-store-utils'
+import {
+  nextInspectorView,
+  normalizeInspectorView,
+  normalizeNarrowTab,
+  type InspectorView,
+  type NarrowTab
+} from './ui-store-utils'
 
 type UIStoreState = {
   metaText: string
-  inspectorHeight: number
+  inspectorView: InspectorView
+  narrowTab: NarrowTab
   setMetaText: (value: string) => void
-  setInspectorHeight: (value: number) => void
+  setInspectorView: (value: InspectorView) => void
+  cycleInspectorView: () => void
+  setNarrowTab: (value: NarrowTab) => void
   hydrateMeta: () => Promise<void>
 }
 
 export const useUIStore = create<UIStoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       metaText: 'Loading runtime metadata...',
-      inspectorHeight: 220,
+      inspectorView: 'split',
+      narrowTab: 'workspace',
 
       setMetaText: (value) => {
         set({ metaText: value })
       },
 
-      setInspectorHeight: (value) => {
-        set({ inspectorHeight: clampInspectorHeight(value) })
+      setInspectorView: (value) => {
+        set({ inspectorView: normalizeInspectorView(value) })
+      },
+
+      cycleInspectorView: () => {
+        set({ inspectorView: nextInspectorView(get().inspectorView) })
+      },
+
+      setNarrowTab: (value) => {
+        set({ narrowTab: normalizeNarrowTab(value) })
       },
 
       hydrateMeta: async () => {
@@ -40,19 +58,16 @@ export const useUIStore = create<UIStoreState>()(
       name: 'protocol-forge-ui-preferences',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        inspectorHeight: state.inspectorHeight
+        inspectorView: state.inspectorView,
+        narrowTab: state.narrowTab
       }),
       merge: (persistedState, currentState) => {
-        const maybeState = persistedState as Partial<UIStoreState>
-        const inspectorHeight =
-          typeof maybeState.inspectorHeight === 'number'
-            ? clampInspectorHeight(maybeState.inspectorHeight)
-            : currentState.inspectorHeight
-
+        const maybeState = (persistedState ?? {}) as Partial<UIStoreState>
         return {
           ...currentState,
           ...maybeState,
-          inspectorHeight
+          inspectorView: normalizeInspectorView(maybeState.inspectorView),
+          narrowTab: normalizeNarrowTab(maybeState.narrowTab)
         }
       }
     }
