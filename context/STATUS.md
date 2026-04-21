@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-21
 
 ## Completed Milestones
 
@@ -27,6 +27,9 @@
 
 ## Completed This Session (Unreleased)
 
+- Responsive AppShell layout: replaced the draggable inspector splitter with preset-based drawer control (collapsed/split/expanded buttons on wide viewports ≥900px, and a three-tab single-column layout below 900px for Servers/Workspace/Inspector). Added `useIsNarrow` hook and updated ui-store to persist `inspectorView` + `narrowTab` state. Fixes content overflow behind siblings by adding `min-h-0 overflow-y-auto` to sidebar and main regions.
+- Fixed status bar overflow on long session IDs and error strings: added `truncate` and `min-w-0` overflow guards; removed duplicate `border-t` (AppShell footer already has one).
+- Fixed ProtocolInspector filter/message grids: changed from viewport-relative `md:` breakpoints to column-relative `grid-cols-3` and `grid-cols-2` so they render correctly at 900–1067px wide viewports. Clamped scroll pane heights with `max-h-[min(14rem,40vh)]` for short viewports.
 - Imported the user's login-shell `PATH` at main startup (`src/main/fix-env-path.ts`) so stdio MCP servers invoked via `npx`, `python`, `uvx`, etc. resolve when the app is launched from Finder/Dock. No new dependency; silently falls back to Electron's default `PATH` if the shell invocation fails.
 - Piped the spawned stdio child's stderr and surfaced the last ~8 KB tail in `SESSION_CONNECT_FAILED` errors. Diagnosed by the error users actually see (e.g. npm 404s, missing node, permission denials) instead of just `MCP error -32000: Connection closed`.
 

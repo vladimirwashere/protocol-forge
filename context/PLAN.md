@@ -4,7 +4,7 @@
 
 Desktop Electron app for debugging, inspecting, and testing MCP (Model Context Protocol) servers. Phase 1 focuses on local workflows: connect via stdio/SSE, discover capabilities, invoke tools/resources/prompts, and inspect JSON-RPC traffic in real time.
 
-**Stack:** Electron 35 · React 19 · TypeScript (strict) · electron-vite · Zustand · Tailwind CSS 4 · SQLite (better-sqlite3) · MCP SDK · Zod · Vitest · pnpm
+**Stack:** Electron 39 · React 19 · TypeScript (strict) · electron-vite · Zustand · Tailwind CSS 4 · SQLite (better-sqlite3) · MCP SDK · Zod · Vitest · pnpm
 
 ## Milestones
 
@@ -24,9 +24,9 @@ SQLite in WAL mode with foreign keys. Schema: `server_profiles`, `sessions`, `me
 
 Session manager with lifecycle state machine (connecting → initializing → ready → disconnecting → disconnected | error). Stdio transport wrapping MCP SDK. Protocol message capture + persistence. Connect/disconnect/status IPC.
 
-### M5 — SSE Transport & Unified Transport
+### M5 — HTTP Transports & Unified Transport
 
-SSE transport wrapping MCP SDK. Unified transport factory so session manager doesn't care about transport type. URL + header validation. SSE profile persistence in renderer.
+SSE and Streamable HTTP transports wrapping MCP SDK (SSE deprecated 2025-03-26; Streamable HTTP is preferred). Unified transport factory so session manager doesn't care about transport type. URL + header validation + encryption for sensitive headers. HTTP profile persistence in renderer.
 
 ### M6 — Core UI Shell
 
@@ -51,6 +51,8 @@ Audit all error paths. Toast/notification system. React error boundaries. Improv
 ## Success Criteria
 
 Each milestone is complete when every criterion in its checklist passes. Do not add scope beyond these items.
+
+**Note:** M1–M10 are complete and validated (Phase 1 complete). See `context/STATUS.md` for current state.
 
 ### M1 — Scaffold & Tooling
 
@@ -81,11 +83,12 @@ Each milestone is complete when every criterion in its checklist passes. Do not 
 - [ ] Disconnect cleanly terminates child process
 - [ ] Session lifecycle tests pass
 
-### M5 — SSE Transport
+### M5 — HTTP Transports (SSE & Streamable HTTP)
 
-- [ ] Can connect to an SSE MCP server by URL
-- [ ] SSE and stdio share the same session manager interface
+- [ ] Can connect to an SSE or Streamable HTTP MCP server by URL
+- [ ] HTTP and stdio transports share the same session manager interface
 - [ ] URL validation rejects non-http(s) schemes
+- [ ] Sensitive headers (auth tokens) are encrypted at rest
 - [ ] Transport factory tests pass
 
 ### M6 — Core UI Shell
