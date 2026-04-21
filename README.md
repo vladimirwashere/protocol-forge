@@ -12,12 +12,12 @@ It is aimed at developers who build or integrate MCP servers and need reliable v
 
 | Feature | Details |
 |---|---|
-| **Multi-transport connections** | Connect over `stdio` (local processes) or `streamable-http`. Profiles are saved and reusable. |
+| **Multi-transport connections** | Connect over `stdio` (local processes), `streamable-http`, or `sse`. Profiles are saved and reusable. |
 | **Capability discovery** | List tools, resources, and prompts for the active session in a tabbed panel. |
 | **Schema-driven invocation** | Invoke tools and read resources/prompts through auto-generated forms derived from the server's JSON Schema. Results include structured output and round-trip latency. |
 | **Protocol Inspector** | Stream live JSON-RPC traffic with direction/method/text filters, pause/resume, and per-message detail. |
 | **Session history** | All sessions and messages are persisted locally. Replay any historical session's protocol trace from the inspector. |
-| **Encrypted header storage** | `streamable-http` profile headers (auth tokens, API keys) are encrypted at rest via the OS keystore. Legacy `sse` profile headers remain encrypted on disk and can be migrated. |
+| **Encrypted header storage** | `sse` and `streamable-http` profile headers (auth tokens, API keys) are encrypted at rest via the OS keystore. |
 | **In-app auto-update** | The app checks for new releases on launch and offers a one-click restart when an update is ready. |
 
 ## Installing a Release
@@ -49,7 +49,7 @@ See [SECURITY.md](SECURITY.md) for the trust model and current limitations.
 
 <!-- Screenshot: sidebar showing the new-profile form with transport dropdown open (stdio selected). Filename: docs/screenshots/profile-create.png -->
 
-1. **Create a server profile** in the sidebar — choose `stdio` or `streamable-http` and fill in the command/URL.
+1. **Create a server profile** in the sidebar — choose `stdio`, `streamable-http`, or `sse` and fill in the command/URL.
 2. **Connect** the profile and wait for session state `ready`.
 3. **Open Discovery** and load tools, resources, or prompts from the server.
 
@@ -83,9 +83,16 @@ url:       https://example.com/mcp
 headers:   Authorization: Bearer <token>
 ```
 
-### Legacy SSE profiles
+### SSE profile (legacy)
 
-SSE transport creation and connection are removed. Existing saved `sse` profiles are still listed so you can convert them in-app to `streamable-http`.
+```text
+transport: sse
+url:       https://example.com/mcp/sse
+headers:   optional key/value headers
+```
+
+The MCP specification deprecated SSE on 2025-03-26 in favor of Streamable
+HTTP. Prefer Streamable HTTP against any server that supports it.
 
 ## Debugging and Operations
 
@@ -102,7 +109,7 @@ Protocol Forge stores all data in a SQLite database (`protocol-forge.db`) inside
 ### Common failure patterns
 
 - **`stdio` connection fails** — verify command/args/cwd and confirm the MCP server binary can launch from that context. If the server needs env vars not in the default allowlist, add them explicitly to the profile's env field.
-- **`streamable-http` connection fails** — verify the URL scheme is `http` or `https`, the endpoint path, and any required auth headers.
+- **`sse` / `streamable-http` connection fails** — verify the URL scheme is `http` or `https`, the endpoint path, and any required auth headers.
 - **Discovery is empty** — confirm the session state is `ready` before listing capabilities.
 
 ### Runtime inspection tips
@@ -116,7 +123,7 @@ Protocol Forge stores all data in a SQLite database (`protocol-forge.db`) inside
 - Strict Electron isolation: `contextIsolation` + `sandbox` + no renderer Node integration.
 - Every IPC payload crossing into main is validated with Zod-backed contracts.
 - External server data is treated as untrusted and rendered defensively.
-- Request headers for `streamable-http` profiles are encrypted at rest via the OS keystore (Keychain on macOS, DPAPI on Windows, libsecret on Linux). Legacy `sse` rows are still encrypted/migrated on read. On Linux hosts without a libsecret-compatible keyring, Protocol Forge logs a warning and falls back to plaintext.
+- Request headers for `sse` and `streamable-http` profiles are encrypted at rest via the OS keystore (Keychain on macOS, DPAPI on Windows, libsecret on Linux). On Linux hosts without a libsecret-compatible keyring, Protocol Forge logs a warning and falls back to plaintext.
 - Spawned `stdio` servers inherit only the MCP SDK's default env allowlist — arbitrary host env vars are not leaked into child processes.
 
 See [SECURITY.md](SECURITY.md) for the full policy.
