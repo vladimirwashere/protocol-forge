@@ -31,7 +31,6 @@ function App(): React.JSX.Element {
   const resetForm = useServerStore((state) => state.resetForm)
   const refreshProfiles = useServerStore((state) => state.refreshProfiles)
   const saveProfile = useServerStore((state) => state.saveProfile)
-  const convertLegacySseProfile = useServerStore((state) => state.convertLegacySseProfile)
   const deleteProfile = useServerStore((state) => state.deleteProfile)
 
   const sessionStatus = useSessionStore((state) => state.sessionStatus)
@@ -248,9 +247,6 @@ function App(): React.JSX.Element {
               }}
               onConnectProfile={(profile) => {
                 void connectProfile(profile)
-              }}
-              onConvertLegacySseProfile={(profile) => {
-                void convertLegacySseProfile(profile)
               }}
             />
           </SectionErrorBoundary>

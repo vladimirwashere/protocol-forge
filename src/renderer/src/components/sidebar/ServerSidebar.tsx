@@ -9,7 +9,6 @@ type ServerSidebarProps = {
   onSaveProfile: () => void
   onDeleteProfile: (id: string) => void
   onConnectProfile: (profile: ServerProfile) => void
-  onConvertLegacySseProfile: (profile: ServerProfile) => void
 }
 
 function ServerSidebar({
@@ -19,8 +18,7 @@ function ServerSidebar({
   setFormField,
   onSaveProfile,
   onDeleteProfile,
-  onConnectProfile,
-  onConvertLegacySseProfile
+  onConnectProfile
 }: ServerSidebarProps): React.JSX.Element {
   return (
     <>
@@ -66,14 +64,14 @@ function ServerSidebar({
         ) : (
           <>
             <input
-              value={form.sseUrl}
-              onChange={(event) => setFormField('sseUrl', event.target.value)}
+              value={form.httpUrl}
+              onChange={(event) => setFormField('httpUrl', event.target.value)}
               placeholder="Streamable HTTP endpoint URL"
               className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
             />
             <textarea
-              value={form.sseHeadersRaw}
-              onChange={(event) => setFormField('sseHeadersRaw', event.target.value)}
+              value={form.httpHeadersRaw}
+              onChange={(event) => setFormField('httpHeadersRaw', event.target.value)}
               placeholder={'Headers (optional)\nAuthorization: Bearer token\nX-Trace-Id: 123'}
               rows={3}
               className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
@@ -108,32 +106,18 @@ function ServerSidebar({
                   ? `cwd: ${profile.cwd}`
                   : `transport: ${profile.transport} | headers: ${Object.keys(profile.headers ?? {}).length}`}
               </p>
-              {profile.transport === 'sse' ? (
-                <p className="mt-1 text-xs text-amber-300">
-                  Legacy SSE profile. Convert to Streamable HTTP before connecting.
-                </p>
-              ) : null}
               <button
                 onClick={() => onDeleteProfile(profile.id)}
                 className="mt-2 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
               >
                 Delete
               </button>
-              {profile.transport === 'sse' ? (
-                <button
-                  onClick={() => onConvertLegacySseProfile(profile)}
-                  className="mt-2 ml-2 rounded bg-amber-200 px-2 py-1 text-xs font-medium text-slate-900"
-                >
-                  Convert to Streamable HTTP
-                </button>
-              ) : (
-                <button
-                  onClick={() => onConnectProfile(profile)}
-                  className="mt-2 ml-2 rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-900"
-                >
-                  Connect
-                </button>
-              )}
+              <button
+                onClick={() => onConnectProfile(profile)}
+                className="mt-2 ml-2 rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-900"
+              >
+                Connect
+              </button>
             </div>
           ))
         )}

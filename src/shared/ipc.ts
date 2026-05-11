@@ -86,7 +86,7 @@ export type StreamableHttpConnectInput = {
   headers?: Record<string, string>
 }
 
-export type SessionTransport = 'stdio' | 'sse' | 'streamable-http'
+export type SessionTransport = 'stdio' | 'streamable-http'
 
 export type SessionConnectInput =
   | {

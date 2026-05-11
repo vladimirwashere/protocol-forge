@@ -160,14 +160,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     set({ sessionError: null })
 
     try {
-      if (profile.transport === 'sse') {
-        set({
-          sessionError:
-            'Legacy SSE profiles are no longer supported. Convert this profile to Streamable HTTP and reconnect.'
-        })
-        return
-      }
-
       const connected = await (() => {
         if (profile.transport === 'stdio') {
           const stdioInput: {
@@ -201,15 +193,11 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
           urlInput.headers = profile.headers
         }
 
-        if (profile.transport === 'streamable-http') {
-          return window.api.connectSession({
-            transport: 'streamable-http',
-            streamableHttp: urlInput,
-            profileId: profile.id
-          })
-        }
-
-        throw new Error('Unsupported profile transport')
+        return window.api.connectSession({
+          transport: 'streamable-http',
+          streamableHttp: urlInput,
+          profileId: profile.id
+        })
       })()
 
       const [status, messages] = await Promise.all([

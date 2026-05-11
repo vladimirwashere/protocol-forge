@@ -187,26 +187,6 @@ describe('serverProfilesRepo', () => {
     ).toThrow(/URL must be valid/)
   })
 
-  it('still reads legacy SSE profiles for migration flows', () => {
-    state.rows.push({
-      id: 'legacy-sse-1',
-      name: 'Legacy SSE',
-      transport_type: 'sse',
-      command: 'sse',
-      args_json: '[]',
-      cwd: '',
-      url: 'https://example.com/mcp/sse',
-      headers_json: null,
-      headers_enc: Buffer.from('enc:{"Authorization":"Bearer token"}', 'utf8'),
-      created_at: '2026-01-01T00:00:00.000Z',
-      updated_at: '2026-01-01T00:00:00.000Z'
-    })
-
-    const listed = listServerProfiles()
-    expect(listed).toHaveLength(1)
-    expect(listed[0].transport).toBe('sse')
-  })
-
   it('deletes a profile by id', () => {
     const saved = upsertServerProfile({
       name: 'Temp',

@@ -1,4 +1,4 @@
-export const parseSseHeadersRaw = (raw: string): Record<string, string> => {
+export const parseHttpHeadersRaw = (raw: string): Record<string, string> => {
   const headers: Record<string, string> = {}
 
   for (const [index, line] of raw.split(/\r?\n/).entries()) {
@@ -9,14 +9,14 @@ export const parseSseHeadersRaw = (raw: string): Record<string, string> => {
 
     const separator = trimmed.indexOf(':')
     if (separator <= 0) {
-      throw new Error(`Invalid SSE header on line ${index + 1}. Use "Header-Name: value".`)
+      throw new Error(`Invalid header on line ${index + 1}. Use "Header-Name: value".`)
     }
 
     const key = trimmed.slice(0, separator).trim()
     const value = trimmed.slice(separator + 1).trim()
 
     if (key.length === 0) {
-      throw new Error(`Invalid SSE header key on line ${index + 1}`)
+      throw new Error(`Invalid header key on line ${index + 1}`)
     }
 
     headers[key] = value

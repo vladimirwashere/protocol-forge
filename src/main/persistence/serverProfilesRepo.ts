@@ -38,16 +38,12 @@ function readHeaders(row: ServerProfileRow): Record<string, string> {
   return {}
 }
 
-const isUrlTransport = (transport: SessionTransport): transport is 'sse' | 'streamable-http' => {
-  return transport === 'sse' || transport === 'streamable-http'
-}
-
 function toServerProfile(row: ServerProfileRow): ServerProfile {
-  if (isUrlTransport(row.transport_type)) {
+  if (row.transport_type === 'streamable-http') {
     return {
       id: row.id,
       name: row.name,
-      transport: row.transport_type,
+      transport: 'streamable-http',
       url: row.url ?? '',
       headers: readHeaders(row),
       createdAt: row.created_at,
