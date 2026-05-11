@@ -10,8 +10,8 @@ Protocol Forge enforces the standard Electron trust boundaries documented in
 - **Renderer process** is untrusted UI. It runs with `contextIsolation: true`,
   `sandbox: true`, `nodeIntegration: false`, and no `webviewTag`. It reaches the
   main process only through the typed bridge in `src/shared/ipc.ts`.
-- **User-configured MCP servers** (stdio commands, SSE endpoints, or
-  Streamable HTTP endpoints) are untrusted. Their responses are rendered
+- **User-configured MCP servers** (stdio commands or Streamable HTTP
+  endpoints) are untrusted. Their responses are rendered
   defensively. Stdio commands are spawned with validated, bounded
   arguments — never through a shell. Stdio child processes inherit only
   the MCP SDK's default env allowlist (`PATH`, `HOME`, `USER`, platform
@@ -23,7 +23,7 @@ Protocol Forge enforces the standard Electron trust boundaries documented in
 Protocol Forge persists state in a local SQLite database
 (`protocol-forge.db` in Electron `userData`).
 
-- **SSE and Streamable HTTP request headers** are encrypted via Electron
+- **Streamable HTTP request headers** are encrypted via Electron
   `safeStorage`, which delegates to the OS keystore (Keychain on macOS,
   DPAPI on Windows, libsecret on Linux). Existing plaintext rows from
   earlier versions are migrated in place on first launch of v0.1.1.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Protocol Forge is a desktop Electron app for inspecting and testing MCP servers over `stdio`, `SSE`, and `Streamable HTTP` transports.
+Protocol Forge is a desktop Electron app for inspecting and testing MCP servers over `stdio` and `Streamable HTTP` transports.
 
 Runtime is split across the standard Electron trust boundaries:
 
@@ -32,7 +32,7 @@ Responsibilities:
 Key modules:
 
 - `mcp/session-manager.ts`: session lifecycle, discovery invocation, latency/error metadata capture, message persistence.
-- `mcp/transports/*`: concrete `stdio`, `sse`, and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
+- `mcp/transports/*`: concrete `stdio` and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
 - `persistence/database.ts`: SQLite initialization and schema guards.
 - `persistence/*Repo.ts`: repository layer for profiles/sessions/messages.
 
@@ -63,7 +63,7 @@ Responsibilities:
 
 ### 2. Session lifecycle
 
-1. Renderer requests connect (`stdio`, `sse`, or `streamable-http`) for a profile.
+1. Renderer requests connect (`stdio` or `streamable-http`) for a profile.
 2. Main delegates to session manager, which initializes transport and MCP client.
 3. Session state transitions are persisted and exposed via status/list IPC.
 4. Disconnect/shutdown closes active transport and records terminal state.

@@ -82,15 +82,11 @@ command: npx
 args: @modelcontextprotocol/server-everything
 ```
 
-### Legacy SSE profile migration
-
-SSE transport creation/connection is removed. Existing `sse` profiles can be converted in-app to `streamable-http` from the server list.
-
 ### Streamable HTTP server
 
-Configure a profile with transport `streamable-http` and set `url`. The
-MCP specification deprecated SSE on 2025-03-26, so prefer Streamable HTTP
-against any server that supports it.
+Configure a profile with transport `streamable-http` and set `url`. Legacy
+`sse` profiles in existing databases are automatically migrated to
+`streamable-http` on launch by migration `0002_migrate_legacy_sse_profiles`.
 
 ## Debugging Playbook
 
