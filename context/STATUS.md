@@ -27,6 +27,10 @@
 - [ ] M11.4 centralize IPC Zod validation behind one helper.
 - [ ] M11.5 split `session-manager.ts` into lifecycle/discovery/tracing/persistence modules.
 
+## Current Task
+
+M11 Foundations & Tightening. Next up: M11.3 inject the `userData` path into session manager.
+
 ## Completed This Session (Phase 2 Kickoff)
 
 - Added `src/main/persistence/migrations/` with a versioned runner: `schema_migrations` tracks applied ids, migrations run inside a transaction in id order, duplicate ids are rejected. Migration `0001_initial_schema` captures the current schema idempotently (CREATE IF NOT EXISTS + `addColumnIfMissing`). Migration `0002_migrate_legacy_sse_profiles` rewrites legacy `sse` rows in `server_profiles` and `sessions` to `streamable-http` at boot.
@@ -35,6 +39,8 @@
 - Refreshed docs (`README.md`, `docs/architecture.md`, `docs/development.md`, `SECURITY.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) to drop SSE from supported transports.
 
 ## Completed This Session (Unreleased)
+
+- Pinned transitive `ip-address` to `10.1.1` via a root pnpm override and refreshed `pnpm-lock.yaml`, removing the vulnerable `10.1.0` resolution from both runtime and build-time dependency trees.
 
 - Responsive AppShell layout: replaced the draggable inspector splitter with preset-based drawer control (collapsed/split/expanded buttons on wide viewports ≥900px, and a three-tab single-column layout below 900px for Servers/Workspace/Inspector). Added `useIsNarrow` hook and updated ui-store to persist `inspectorView` + `narrowTab` state. Fixes content overflow behind siblings by adding `min-h-0 overflow-y-auto` to sidebar and main regions.
 - Fixed status bar overflow on long session IDs and error strings: added `truncate` and `min-w-0` overflow guards; removed duplicate `border-t` (AppShell footer already has one).
