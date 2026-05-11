@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-05-12
 
 ## Completed Milestones
 
@@ -19,11 +19,20 @@
 
 ## In Progress
 
-**Phase 1 complete.**
+**Phase 2 kickoff — M11 Foundations & Tightening.**
 
-- [ ] Start Phase 2 planning when requested.
+- [x] M11.1 versioned migration runner with `schema_migrations` table.
+- [x] M11.2 remove legacy SSE transport (auto-migrate existing rows).
+- [ ] M11.3 inject userData path into session manager.
+- [ ] M11.4 centralize IPC Zod validation behind one helper.
+- [ ] M11.5 split `session-manager.ts` into lifecycle/discovery/tracing/persistence modules.
 
-**Status:** M1-M10 are complete and validated.
+## Completed This Session (Phase 2 Kickoff)
+
+- Added `src/main/persistence/migrations/` with a versioned runner: `schema_migrations` tracks applied ids, migrations run inside a transaction in id order, duplicate ids are rejected. Migration `0001_initial_schema` captures the current schema idempotently (CREATE IF NOT EXISTS + `addColumnIfMissing`). Migration `0002_migrate_legacy_sse_profiles` rewrites legacy `sse` rows in `server_profiles` and `sessions` to `streamable-http` at boot.
+- Removed legacy SSE transport: dropped `'sse'` from `SessionTransport`, deleted the renderer's convert-to-Streamable-HTTP path (sidebar button + `convertLegacySseProfile` store action), renamed renderer form fields (`sseUrl` → `httpUrl`, `sseHeadersRaw` → `httpHeadersRaw`, `parseSseHeadersRaw` → `parseHttpHeadersRaw`), simplified `migratePlaintextHeaders` to only target `streamable-http`. Existing SSE rows are auto-migrated on first launch, so no user action is required.
+- Added `tests/migration-runner.test.ts` and `tests/migration-0002-sse.test.ts`; updated `tests/server-profiles-repo.test.ts`, `tests/database-migration.test.ts`, and `tests/server-store-utils.test.ts` for the new contracts. Full suite: 73 tests pass.
+- Refreshed docs (`README.md`, `docs/architecture.md`, `docs/development.md`, `SECURITY.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) to drop SSE from supported transports.
 
 ## Completed This Session (Unreleased)
 
