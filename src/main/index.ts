@@ -14,17 +14,12 @@ import { APP_NAME, APP_VERSION } from '../shared/constants'
 import {
   IPC_CHANNELS,
   type AppMeta,
-  type PingResponse,
-  type DeleteServerProfileInput,
-  type UpsertServerProfileInput,
-  type SessionMessage,
-  type SessionMessagesInput,
-  type SessionMessagesStreamInput,
-  type SessionListInput,
-  type DiscoverySessionInput,
   type DiscoveryCallToolInput,
-  type DiscoveryReadResourceInput,
-  type DiscoveryGetPromptInput
+  type DiscoveryGetPromptInput,
+  type PingResponse,
+  type SessionConnectInput,
+  type SessionMessage,
+  type UpsertServerProfileInput
 } from '../shared/ipc'
 import {
   deleteServerProfile,
@@ -32,11 +27,25 @@ import {
   upsertServerProfile
 } from './persistence/serverProfilesRepo'
 import { sessionManager } from './mcp/session-manager'
-import type { SessionConnectInput, SessionDisconnectInput, SessionStatusInput } from '../shared/ipc'
 import { checkForUpdates, initAutoUpdater, quitAndInstall } from './updater'
 import { fixEnvPath } from './fix-env-path'
 import { initSafeStorage } from './security/safe-storage'
 import { initDatabase } from './persistence/database'
+import { registerIpcHandler, registerIpcHandlerNoInput } from './ipc/register'
+import {
+  deleteServerProfileSchema,
+  discoveryCallToolSchema,
+  discoveryGetPromptSchema,
+  discoveryReadResourceSchema,
+  discoverySessionSchema,
+  sessionConnectSchema,
+  sessionDisconnectSchema,
+  sessionListSchema,
+  sessionMessagesSchema,
+  sessionMessagesStreamSchema,
+  sessionStatusSchema,
+  upsertServerProfileSchema
+} from './ipc/schemas'
 
 fixEnvPath()
 
@@ -269,52 +278,55 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  ipcMain.handle(IPC_CHANNELS.appGetMeta, (): AppMeta => {
-    return {
+  registerIpcHandlerNoInput(
+    IPC_CHANNELS.appGetMeta,
+    (): AppMeta => ({
       name: APP_NAME,
       version: APP_VERSION,
       platform: process.platform
-    }
-  })
+    })
+  )
 
-  ipcMain.handle(IPC_CHANNELS.appPing, (): PingResponse => {
-    return {
+  registerIpcHandlerNoInput(
+    IPC_CHANNELS.appPing,
+    (): PingResponse => ({
       ok: true,
       at: new Date().toISOString()
-    }
-  })
+    })
+  )
 
-  ipcMain.handle(IPC_CHANNELS.serverProfilesList, () => {
-    return listServerProfiles()
-  })
+  registerIpcHandlerNoInput(IPC_CHANNELS.serverProfilesList, () => listServerProfiles())
 
-  ipcMain.handle(IPC_CHANNELS.serverProfilesUpsert, (_, input: UpsertServerProfileInput) => {
-    return upsertServerProfile(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.serverProfilesUpsert, upsertServerProfileSchema, (input) =>
+    // Zod's `.optional()` produces `T | undefined`; IPC types use `?:` without `| undefined`.
+    // Cast is safe — the schema validates the runtime shape.
+    upsertServerProfile(input as UpsertServerProfileInput)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.serverProfilesDelete, (_, input: DeleteServerProfileInput) => {
-    return deleteServerProfile(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.serverProfilesDelete, deleteServerProfileSchema, (input) =>
+    deleteServerProfile(input)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpSessionConnect, (_, input: SessionConnectInput) => {
-    return sessionManager.connect(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpSessionConnect, sessionConnectSchema, (input) =>
+    sessionManager.connect(input as SessionConnectInput)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpSessionDisconnect, (_, input: SessionDisconnectInput) => {
-    return sessionManager.disconnect(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpSessionDisconnect, sessionDisconnectSchema, (input) =>
+    sessionManager.disconnect(input)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpSessionStatus, (_, input: SessionStatusInput) => {
-    return sessionManager.getStatus(input.sessionId)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpSessionStatus, sessionStatusSchema, (input) =>
+    sessionManager.getStatus(input.sessionId)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpSessionMessages, (_, input: SessionMessagesInput) => {
-    return sessionManager.getMessages(input.sessionId, input.limit)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpSessionMessages, sessionMessagesSchema, (input) =>
+    sessionManager.getMessages(input.sessionId, input.limit)
+  )
 
-  ipcMain.handle(
+  registerIpcHandler(
     IPC_CHANNELS.mcpSessionMessagesStream,
-    (event, input: SessionMessagesStreamInput) => {
+    sessionMessagesStreamSchema,
+    (input, event) => {
       if (input.enabled) {
         messageStreamSubscribers.add(event.sender.id)
       } else {
@@ -329,36 +341,36 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle(IPC_CHANNELS.mcpSessionList, (_, input?: SessionListInput) => {
-    return sessionManager.listSessions(input?.limit)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpSessionList, sessionListSchema, (input) =>
+    sessionManager.listSessions(input.limit)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryListTools, (_, input: DiscoverySessionInput) => {
-    return sessionManager.listTools(input.sessionId)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryListTools, discoverySessionSchema, (input) =>
+    sessionManager.listTools(input.sessionId)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryListResources, (_, input: DiscoverySessionInput) => {
-    return sessionManager.listResources(input.sessionId)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryListResources, discoverySessionSchema, (input) =>
+    sessionManager.listResources(input.sessionId)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryListPrompts, (_, input: DiscoverySessionInput) => {
-    return sessionManager.listPrompts(input.sessionId)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryListPrompts, discoverySessionSchema, (input) =>
+    sessionManager.listPrompts(input.sessionId)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryCallTool, (_, input: DiscoveryCallToolInput) => {
-    return sessionManager.callTool(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryCallTool, discoveryCallToolSchema, (input) =>
+    sessionManager.callTool(input as DiscoveryCallToolInput)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryReadResource, (_, input: DiscoveryReadResourceInput) => {
-    return sessionManager.readResource(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryReadResource, discoveryReadResourceSchema, (input) =>
+    sessionManager.readResource(input)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.mcpDiscoveryGetPrompt, (_, input: DiscoveryGetPromptInput) => {
-    return sessionManager.getPrompt(input)
-  })
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryGetPrompt, discoveryGetPromptSchema, (input) =>
+    sessionManager.getPrompt(input as DiscoveryGetPromptInput)
+  )
 
-  ipcMain.handle(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
-  ipcMain.handle(IPC_CHANNELS.appInstallUpdate, () => {
+  registerIpcHandlerNoInput(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
+  registerIpcHandlerNoInput(IPC_CHANNELS.appInstallUpdate, () => {
     quitAndInstall()
   })
 

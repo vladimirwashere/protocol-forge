@@ -23,19 +23,21 @@
 
 - [x] M11.1 versioned migration runner with `schema_migrations` table.
 - [x] M11.2 remove legacy SSE transport (auto-migrate existing rows).
-- [ ] M11.3 inject userData path into session manager.
-- [ ] M11.4 centralize IPC Zod validation behind one helper.
+- [x] M11.3 inject userData path + safeStorage provider (decouples persistence/crypto from Electron globals).
+- [x] M11.4 centralize IPC Zod validation behind one helper.
 - [ ] M11.5 split `session-manager.ts` into lifecycle/discovery/tracing/persistence modules.
 
 ## Current Task
 
-M11 Foundations & Tightening. Next up: M11.3 inject the `userData` path into session manager.
+M11 Foundations & Tightening. Next up: M11.5 split `session-manager.ts` into focused modules.
 
 ## Completed This Session (Phase 2 Kickoff)
 
 - Added `src/main/persistence/migrations/` with a versioned runner: `schema_migrations` tracks applied ids, migrations run inside a transaction in id order, duplicate ids are rejected. Migration `0001_initial_schema` captures the current schema idempotently (CREATE IF NOT EXISTS + `addColumnIfMissing`). Migration `0002_migrate_legacy_sse_profiles` rewrites legacy `sse` rows in `server_profiles` and `sessions` to `streamable-http` at boot.
 - Removed legacy SSE transport: dropped `'sse'` from `SessionTransport`, deleted the renderer's convert-to-Streamable-HTTP path (sidebar button + `convertLegacySseProfile` store action), renamed renderer form fields (`sseUrl` → `httpUrl`, `sseHeadersRaw` → `httpHeadersRaw`, `parseSseHeadersRaw` → `parseHttpHeadersRaw`), simplified `migratePlaintextHeaders` to only target `streamable-http`. Existing SSE rows are auto-migrated on first launch, so no user action is required.
-- Added `tests/migration-runner.test.ts` and `tests/migration-0002-sse.test.ts`; updated `tests/server-profiles-repo.test.ts`, `tests/database-migration.test.ts`, and `tests/server-store-utils.test.ts` for the new contracts. Full suite: 73 tests pass.
+- Decoupled persistence and crypto from Electron globals (M11.3): `safe-storage` accepts a `SafeStorageProvider` via `initSafeStorage`; `database.ts` no longer imports `electron`, exposes `initDatabase(userDataDir)` + `getDatabase()`. Main wires both at `app.whenReady()`. Tests no longer need to mock `electron`.
+- Centralized IPC Zod validation (M11.4): added `src/main/ipc/schemas.ts` (one Zod schema per channel, compile-time `Equals` assertions vs IPC contract types) and `src/main/ipc/register.ts` (`registerIpcHandler` + `registerIpcHandlerNoInput` helpers). Replaced all 19 `ipcMain.handle(...)` calls in `index.ts`. Invalid input now throws `AppError('INVALID_INPUT', …, { channel })`, which Electron propagates to the renderer's `invoke()` rejection. Transport-level Zod schemas in `stdio-transport.ts` / `streamable-http-transport.ts` remain as defense-in-depth.
+- Added `tests/migration-runner.test.ts`, `tests/migration-0002-sse.test.ts`, and `tests/ipc-register.test.ts`; updated `tests/server-profiles-repo.test.ts`, `tests/database-migration.test.ts`, and `tests/server-store-utils.test.ts` for the new contracts. Full suite: 78 tests pass.
 - Refreshed docs (`README.md`, `docs/architecture.md`, `docs/development.md`, `SECURITY.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) to drop SSE from supported transports.
 
 ## Completed This Session (Unreleased)
