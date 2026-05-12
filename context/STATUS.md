@@ -25,11 +25,11 @@
 - [x] M11.2 remove legacy SSE transport (auto-migrate existing rows).
 - [x] M11.3 inject userData path + safeStorage provider (decouples persistence/crypto from Electron globals).
 - [x] M11.4 centralize IPC Zod validation behind one helper.
-- [ ] M11.5 split `session-manager.ts` into lifecycle/discovery/tracing/persistence modules.
+- [x] M11.5 split `session-manager.ts` into focused modules under `src/main/mcp/session/`.
 
 ## Current Task
 
-M11 Foundations & Tightening. Next up: M11.5 split `session-manager.ts` into focused modules.
+M11 Foundations & Tightening complete. Next phase milestone TBD.
 
 ## Completed This Session (Phase 2 Kickoff)
 
@@ -37,6 +37,7 @@ M11 Foundations & Tightening. Next up: M11.5 split `session-manager.ts` into foc
 - Removed legacy SSE transport: dropped `'sse'` from `SessionTransport`, deleted the renderer's convert-to-Streamable-HTTP path (sidebar button + `convertLegacySseProfile` store action), renamed renderer form fields (`sseUrl` → `httpUrl`, `sseHeadersRaw` → `httpHeadersRaw`, `parseSseHeadersRaw` → `parseHttpHeadersRaw`), simplified `migratePlaintextHeaders` to only target `streamable-http`. Existing SSE rows are auto-migrated on first launch, so no user action is required.
 - Decoupled persistence and crypto from Electron globals (M11.3): `safe-storage` accepts a `SafeStorageProvider` via `initSafeStorage`; `database.ts` no longer imports `electron`, exposes `initDatabase(userDataDir)` + `getDatabase()`. Main wires both at `app.whenReady()`. Tests no longer need to mock `electron`.
 - Centralized IPC Zod validation (M11.4): added `src/main/ipc/schemas.ts` (one Zod schema per channel, compile-time `Equals` assertions vs IPC contract types) and `src/main/ipc/register.ts` (`registerIpcHandler` + `registerIpcHandlerNoInput` helpers). Replaced all 19 `ipcMain.handle(...)` calls in `index.ts`. Invalid input now throws `AppError('INVALID_INPUT', …, { channel })`, which Electron propagates to the renderer's `invoke()` rejection. Transport-level Zod schemas in `stdio-transport.ts` / `streamable-http-transport.ts` remain as defense-in-depth.
+- Split `session-manager.ts` (M11.5) from 601 LOC into a 287-LOC facade plus four focused modules under `src/main/mcp/session/`: `state-machine.ts` (37 LOC — `transitionSessionState`, `RuntimeSession` type), `tracing.ts` (91 LOC — `MessageRecorder` owning the listeners + outbound-request-time map and the JSON-RPC capture logic), `discovery.ts` (123 LOC — pure functions over the MCP `Client` for tools/resources/prompts), `status.ts` (82 LOC — `buildStatusFromRuntime`, `buildStatusFromPersisted`, `mapSessionSummary`, `getDurationMs`). Public API of `SessionManager` and the `sessionManager` singleton is unchanged; existing tests pass without modification.
 - Added `tests/migration-runner.test.ts`, `tests/migration-0002-sse.test.ts`, and `tests/ipc-register.test.ts`; updated `tests/server-profiles-repo.test.ts`, `tests/database-migration.test.ts`, and `tests/server-store-utils.test.ts` for the new contracts. Full suite: 78 tests pass.
 - Refreshed docs (`README.md`, `docs/architecture.md`, `docs/development.md`, `SECURITY.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) to drop SSE from supported transports.
 
