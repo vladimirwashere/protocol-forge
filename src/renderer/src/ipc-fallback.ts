@@ -27,6 +27,10 @@ export function installIpcFallback(): void {
     callTool: notAvailable,
     readResource: notAvailable,
     getPrompt: notAvailable,
+    listPendingSampling: () => Promise.resolve([]),
+    respondSampling: notAvailable,
+    rejectSampling: notAvailable,
+    subscribeSampling: () => () => {},
     checkForUpdates: () => Promise.resolve(),
     installUpdate: () => Promise.resolve(),
     subscribeUpdateStatus: () => () => {}

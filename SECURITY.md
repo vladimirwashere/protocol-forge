@@ -32,6 +32,14 @@ boundary (rejected at the renderer, the IPC schema, and the persistence
 repo). Roots are user-curated per profile and the server only sees the
 roots associated with the profile that authorized the session.
 
+**Sampling.** Servers may call `sampling/createMessage`. Protocol Forge
+parks each request in an in-memory store and surfaces it in a renderer
+panel where the developer composes a mock response by hand — no LLM is
+contacted, and no server input is ever fed to a model on the user's
+behalf. Pending requests are scoped to the originating session and
+auto-rejected on disconnect/error so promises never leak across
+sessions.
+
 ## Data at Rest
 
 Protocol Forge persists state in a local SQLite database

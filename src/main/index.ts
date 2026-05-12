@@ -17,6 +17,7 @@ import {
   type DiscoveryCallToolInput,
   type DiscoveryGetPromptInput,
   type PingResponse,
+  type SamplingPendingRequest,
   type SessionConnectInput,
   type SessionMessage,
   type UpsertServerProfileInput
@@ -38,6 +39,10 @@ import {
   discoveryGetPromptSchema,
   discoveryReadResourceSchema,
   discoverySessionSchema,
+  samplingListPendingSchema,
+  samplingRejectSchema,
+  samplingRespondSchema,
+  samplingStreamSchema,
   sessionConnectSchema,
   sessionDisconnectSchema,
   sessionListSchema,
@@ -268,6 +273,22 @@ app.whenReady().then(() => {
     scheduleFlush()
   })
 
+  const samplingStreamSubscribers = new Set<number>()
+
+  const broadcastSamplingPending = (pending: SamplingPendingRequest[]): void => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!samplingStreamSubscribers.has(window.webContents.id) || window.isDestroyed()) {
+        continue
+      }
+      window.webContents.send(IPC_CHANNELS.mcpSamplingStream, pending)
+    }
+  }
+
+  sessionManager.onSamplingChange(() => {
+    if (samplingStreamSubscribers.size === 0) return
+    broadcastSamplingPending(sessionManager.listPendingSampling())
+  })
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -373,6 +394,33 @@ app.whenReady().then(() => {
     sessionManager.getPrompt(input as DiscoveryGetPromptInput)
   )
 
+  registerIpcHandler(IPC_CHANNELS.mcpSamplingListPending, samplingListPendingSchema, () =>
+    sessionManager.listPendingSampling()
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpSamplingRespond, samplingRespondSchema, (input) =>
+    // Zod's optional → `T | undefined`; IPC type uses `?:` only. Schema validates the shape.
+    sessionManager.respondSampling(input as Parameters<typeof sessionManager.respondSampling>[0])
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpSamplingReject, samplingRejectSchema, (input) =>
+    sessionManager.rejectSampling(input as Parameters<typeof sessionManager.rejectSampling>[0])
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpSamplingStream, samplingStreamSchema, (input, event) => {
+    if (input.enabled) {
+      samplingStreamSubscribers.add(event.sender.id)
+    } else {
+      samplingStreamSubscribers.delete(event.sender.id)
+    }
+
+    event.sender.once('destroyed', () => {
+      samplingStreamSubscribers.delete(event.sender.id)
+    })
+
+    return { ok: true as const }
+  })
+
   registerIpcHandlerNoInput(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
   registerIpcHandlerNoInput(IPC_CHANNELS.appInstallUpdate, () => {
     quitAndInstall()
@@ -416,6 +464,10 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryCallTool)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryReadResource)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryGetPrompt)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingListPending)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingRespond)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingReject)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingStream)
   ipcMain.removeHandler(IPC_CHANNELS.appCheckForUpdates)
   ipcMain.removeHandler(IPC_CHANNELS.appInstallUpdate)
 })

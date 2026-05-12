@@ -32,6 +32,22 @@ const api: AppApi = {
   callTool: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryCallTool, input),
   readResource: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryReadResource, input),
   getPrompt: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryGetPrompt, input),
+  listPendingSampling: () => ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingListPending),
+  respondSampling: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingRespond, input),
+  rejectSampling: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingReject, input),
+  subscribeSampling: (listener) => {
+    const handler = (_event: unknown, pending: Parameters<typeof listener>[0]): void => {
+      listener(pending)
+    }
+
+    ipcRenderer.on(IPC_CHANNELS.mcpSamplingStream, handler)
+    void ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingStream, { enabled: true })
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.mcpSamplingStream, handler)
+      void ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingStream, { enabled: false })
+    }
+  },
   checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
   installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate),
   subscribeUpdateStatus: (listener) => {

@@ -5,6 +5,7 @@ export type AppErrorCode =
   | 'SESSION_ALREADY_ACTIVE'
   | 'SESSION_CONNECT_FAILED'
   | 'SESSION_DISCONNECT_FAILED'
+  | 'SAMPLING_REQUEST_NOT_FOUND'
 
 export class AppError extends Error {
   readonly code: AppErrorCode

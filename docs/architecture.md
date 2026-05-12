@@ -31,7 +31,8 @@ Responsibilities:
 
 Key modules:
 
-- `mcp/session-manager.ts`: session lifecycle, discovery invocation, latency/error metadata capture, message persistence.
+- `mcp/session-manager.ts`: session lifecycle, discovery invocation, latency/error metadata capture, message persistence, and the cross-session `PendingSamplingStore` (server-initiated `sampling/createMessage` requests parked until the developer responds via the renderer).
+- `mcp/session/sampling.ts`: in-memory pending-request store and `CreateMessageRequestSchema` handler registration; pending entries scoped by session id and drained on disconnect/error.
 - `mcp/transports/*`: concrete `stdio` and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
 - `persistence/database.ts`: SQLite initialization and schema guards.
 - `persistence/*Repo.ts`: repository layer for profiles/sessions/messages.
@@ -75,7 +76,14 @@ Responsibilities:
 3. Session manager captures timing and error metadata.
 4. Renderer displays structured result and latency details.
 
-### 4. Protocol inspector stream
+### 4. Server-initiated sampling
+
+1. Server calls `sampling/createMessage` over an active session.
+2. Session manager's handler creates a pending entry keyed by a generated request id and returns a deferred promise to the SDK.
+3. Main pushes the updated pending list to renderer subscribers; the renderer's `SamplingPanel` surfaces the request and a compose form.
+4. Developer responds (text/image/audio content) or declines; main resolves/rejects the deferred promise so the SDK delivers the JSON-RPC response. No LLM backend is integrated — responses are manually composed.
+
+### 5. Protocol inspector stream
 
 1. Session manager emits captured protocol messages.
 2. Main batches messages (100ms / 50-message flush) and pushes to subscribed renderers.

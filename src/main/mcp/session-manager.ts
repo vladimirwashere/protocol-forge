@@ -11,6 +11,9 @@ import type {
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
   DiscoveryReadResourceInput,
+  SamplingPendingRequest,
+  SamplingRejectInput,
+  SamplingRespondInput,
   SessionConnectInput,
   SessionConnectResponse,
   SessionDisconnectInput,
@@ -36,6 +39,7 @@ import { transitionSessionState } from './session/state-machine'
 import { MessageRecorder } from './session/tracing'
 import * as discovery from './session/discovery'
 import { notifyRootsChanged, registerRootsHandler } from './session/roots'
+import { PendingSamplingStore, registerSamplingHandler } from './session/sampling'
 import {
   buildStatusFromPersisted,
   buildStatusFromRuntime,
@@ -48,9 +52,40 @@ export type { SessionEvent, RuntimeSession } from './session/state-machine'
 export class SessionManager {
   private readonly sessions = new Map<string, RuntimeSession>()
   private readonly recorder = new MessageRecorder()
+  private readonly samplingStore = new PendingSamplingStore()
 
   onMessage(listener: (message: SessionMessage) => void): () => void {
     return this.recorder.onMessage(listener)
+  }
+
+  onSamplingChange(listener: () => void): () => void {
+    return this.samplingStore.onChange(listener)
+  }
+
+  listPendingSampling(): SamplingPendingRequest[] {
+    return this.samplingStore.list()
+  }
+
+  respondSampling(input: SamplingRespondInput): { ok: true } {
+    const found = this.samplingStore.respond(input)
+    if (!found) {
+      throw new AppError(
+        'SAMPLING_REQUEST_NOT_FOUND',
+        `Sampling request ${input.requestId} was not found`
+      )
+    }
+    return { ok: true }
+  }
+
+  rejectSampling(input: SamplingRejectInput): { ok: true } {
+    const found = this.samplingStore.reject(input)
+    if (!found) {
+      throw new AppError(
+        'SAMPLING_REQUEST_NOT_FOUND',
+        `Sampling request ${input.requestId} was not found`
+      )
+    }
+    return { ok: true }
   }
 
   async connect(input: SessionConnectInput): Promise<SessionConnectResponse> {
@@ -109,6 +144,8 @@ export class SessionManager {
         return getServerProfile(input.profileId)?.roots ?? []
       })
 
+      registerSamplingHandler(client, sessionId, this.samplingStore, () => randomUUID())
+
       const runtime: RuntimeSession = {
         id: sessionId,
         state: transitionSessionState('disconnected', 'start-connect'),
@@ -161,6 +198,7 @@ export class SessionManager {
       await runtime.client.close()
       this.setSessionState(runtime.id, transitionSessionState(runtime.state, 'disconnected'))
       this.recorder.clearPendingRequestTimes(runtime.id)
+      this.samplingStore.rejectBySession(runtime.id, new Error('Session disconnected'))
 
       return { ok: true }
     } catch (error) {
@@ -181,6 +219,7 @@ export class SessionManager {
           await session.client.close()
           this.setSessionState(session.id, 'disconnected')
           this.recorder.clearPendingRequestTimes(session.id)
+          this.samplingStore.rejectBySession(session.id, new Error('Session disconnected'))
         } catch (error) {
           this.setSessionError(session.id, getErrorMessage(error))
         }
@@ -305,6 +344,7 @@ export class SessionManager {
       errorText: errorMessage
     })
     this.recorder.clearPendingRequestTimes(sessionId)
+    this.samplingStore.rejectBySession(sessionId, new Error(errorMessage))
   }
 }
 

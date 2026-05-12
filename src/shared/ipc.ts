@@ -16,6 +16,10 @@ export const IPC_CHANNELS = {
   mcpDiscoveryCallTool: 'mcp-discovery:call-tool',
   mcpDiscoveryReadResource: 'mcp-discovery:read-resource',
   mcpDiscoveryGetPrompt: 'mcp-discovery:get-prompt',
+  mcpSamplingListPending: 'mcp-sampling:list-pending',
+  mcpSamplingRespond: 'mcp-sampling:respond',
+  mcpSamplingReject: 'mcp-sampling:reject',
+  mcpSamplingStream: 'mcp-sampling:stream',
   appCheckForUpdates: 'app:check-for-updates',
   appInstallUpdate: 'app:install-update',
   appUpdateStatusStream: 'app:update-status-stream'
@@ -243,6 +247,40 @@ export type DiscoveryOperationResult = {
   latencyMs?: number
 }
 
+export type SamplingPendingRequest = {
+  requestId: string
+  sessionId: string
+  createdAt: string
+  params: unknown
+}
+
+export type SamplingResponseContent =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType: string }
+  | { type: 'audio'; data: string; mimeType: string }
+
+export type SamplingRespondInput = {
+  requestId: string
+  model: string
+  role: 'user' | 'assistant'
+  content: SamplingResponseContent
+  stopReason?: string
+}
+
+export type SamplingRejectInput = {
+  requestId: string
+  message: string
+  code?: number
+}
+
+export type SamplingListPendingInput = Record<string, never>
+
+export type SamplingStreamInput = {
+  enabled: boolean
+}
+
+export type SamplingPendingListener = (pending: SamplingPendingRequest[]) => void
+
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
@@ -275,4 +313,8 @@ export type AppApi = {
   callTool: (input: DiscoveryCallToolInput) => Promise<DiscoveryOperationResult>
   readResource: (input: DiscoveryReadResourceInput) => Promise<DiscoveryOperationResult>
   getPrompt: (input: DiscoveryGetPromptInput) => Promise<DiscoveryOperationResult>
+  listPendingSampling: () => Promise<SamplingPendingRequest[]>
+  respondSampling: (input: SamplingRespondInput) => Promise<{ ok: true }>
+  rejectSampling: (input: SamplingRejectInput) => Promise<{ ok: true }>
+  subscribeSampling: (listener: SamplingPendingListener) => () => void
 }

@@ -5,10 +5,12 @@ import AppShell from './components/layout/AppShell'
 import SectionErrorBoundary from './components/layout/SectionErrorBoundary'
 import StatusBar from './components/layout/StatusBar'
 import ToastViewport from './components/notifications/ToastViewport'
+import SamplingPanel from './components/sampling/SamplingPanel'
 import ServerSidebar from './components/sidebar/ServerSidebar'
 import WorkspacePanel from './components/workspace/WorkspacePanel'
 import { useDiscoveryStore } from './stores/discovery-store'
 import { useMessageStore } from './stores/message-store'
+import { useSamplingStore } from './stores/sampling-store'
 import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
 import { useToastStore } from './stores/toast-store'
@@ -78,6 +80,12 @@ function App(): React.JSX.Element {
   const updateStatus = useUpdateStore((state) => state.status)
   const subscribeUpdate = useUpdateStore((state) => state.subscribe)
   const installUpdate = useUpdateStore((state) => state.installUpdate)
+
+  const samplingPending = useSamplingStore((state) => state.pending)
+  const samplingError = useSamplingStore((state) => state.error)
+  const subscribeSampling = useSamplingStore((state) => state.subscribe)
+  const respondSampling = useSamplingStore((state) => state.respond)
+  const rejectSampling = useSamplingStore((state) => state.reject)
 
   const sessionId = sessionStatus?.sessionId ?? null
   const lastDiscoverySessionKeyRef = useRef<string>('')
@@ -192,6 +200,10 @@ function App(): React.JSX.Element {
   }, [subscribeUpdate])
 
   useEffect(() => {
+    subscribeSampling()
+  }, [subscribeSampling])
+
+  useEffect(() => {
     if (lastUpdateStateRef.current === updateStatus.state) {
       return
     }
@@ -255,12 +267,18 @@ function App(): React.JSX.Element {
         }
         main={
           <SectionErrorBoundary sectionName="Workspace and Discovery">
-            <>
+            <div className="space-y-4">
               <WorkspacePanel
                 metaText={metaText}
                 profileCount={profiles.length}
                 sessionStatus={sessionStatus}
                 sessionError={sessionError}
+              />
+              <SamplingPanel
+                pending={samplingPending}
+                error={samplingError}
+                onRespond={respondSampling}
+                onReject={rejectSampling}
               />
               <DiscoveryPanel
                 sessionStatus={sessionStatus}
@@ -288,7 +306,7 @@ function App(): React.JSX.Element {
                 }}
                 onClearResult={clearDiscoveryResult}
               />
-            </>
+            </div>
           </SectionErrorBoundary>
         }
         inspector={

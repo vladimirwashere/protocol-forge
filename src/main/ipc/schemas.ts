@@ -5,6 +5,10 @@ import type {
   DiscoveryGetPromptInput,
   DiscoveryReadResourceInput,
   DiscoverySessionInput,
+  SamplingListPendingInput,
+  SamplingRejectInput,
+  SamplingRespondInput,
+  SamplingStreamInput,
   SessionConnectInput,
   SessionDisconnectInput,
   SessionListInput,
@@ -140,3 +144,34 @@ export const discoveryGetPromptSchema = z.object({
   arguments: promptArgsRecord.optional()
 })
 assertEquals<Equals<z.infer<typeof discoveryGetPromptSchema>, DiscoveryGetPromptInput>>()
+
+// `.default({})` lets the renderer invoke without an argument (an undefined input becomes {}).
+export const samplingListPendingSchema = z.object({}).strict().default({})
+assertEquals<Equals<z.infer<typeof samplingListPendingSchema>, SamplingListPendingInput>>()
+
+const samplingResponseContentSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), text: z.string() }),
+  z.object({ type: z.literal('image'), data: z.string(), mimeType: z.string() }),
+  z.object({ type: z.literal('audio'), data: z.string(), mimeType: z.string() })
+])
+
+export const samplingRespondSchema = z.object({
+  requestId: z.string(),
+  model: z.string(),
+  role: z.enum(['user', 'assistant']),
+  content: samplingResponseContentSchema,
+  stopReason: z.string().optional()
+})
+assertEquals<Equals<z.infer<typeof samplingRespondSchema>, SamplingRespondInput>>()
+
+export const samplingRejectSchema = z.object({
+  requestId: z.string(),
+  message: z.string(),
+  code: z.number().int().optional()
+})
+assertEquals<Equals<z.infer<typeof samplingRejectSchema>, SamplingRejectInput>>()
+
+export const samplingStreamSchema = z.object({
+  enabled: z.boolean()
+})
+assertEquals<Equals<z.infer<typeof samplingStreamSchema>, SamplingStreamInput>>()

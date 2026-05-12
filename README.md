@@ -19,6 +19,7 @@ It is aimed at developers who build or integrate MCP servers and need reliable v
 | **Session history** | All sessions and messages are persisted locally. Replay any historical session's protocol trace from the inspector. |
 | **Encrypted header storage** | `streamable-http` profile headers (auth tokens, API keys) are encrypted at rest via the OS keystore. |
 | **Workspace roots** | Configure `file://` workspace roots per profile. Connected servers can list them via `roots/list`; changes propagate as `notifications/roots/list_changed`. |
+| **Sampling response panel** | When a connected server calls `sampling/createMessage`, the request appears in an in-app panel where you compose a mock response (text/image/audio) by hand. No LLM backend is contacted. |
 | **In-app auto-update** | The app checks for new releases on launch and offers a one-click restart when an update is ready. |
 
 ## Installing a Release
