@@ -8,12 +8,6 @@ vi.mock('../src/main/security/safe-storage', () => ({
   decryptString: (buf: Buffer) => buf.toString('utf8').replace(/^enc:/, '')
 }))
 
-vi.mock('electron', () => ({
-  app: {
-    getPath: () => '/tmp/protocol-forge-test'
-  }
-}))
-
 import { migratePlaintextHeaders } from '../src/main/persistence/database'
 
 type Row = {

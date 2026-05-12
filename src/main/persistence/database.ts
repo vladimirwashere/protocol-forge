@@ -1,4 +1,3 @@
-import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -8,8 +7,11 @@ import { MIGRATIONS, runMigrations } from './migrations'
 let db: Database.Database | null = null
 let linuxKeystoreWarningLogged = false
 
-function openDatabase(): Database.Database {
-  const userDataDir = app.getPath('userData')
+export function initDatabase(userDataDir: string): Database.Database {
+  if (db !== null) {
+    return db
+  }
+
   mkdirSync(userDataDir, { recursive: true })
 
   const dbPath = join(userDataDir, 'protocol-forge.db')
@@ -23,6 +25,7 @@ function openDatabase(): Database.Database {
   migratePlaintextHeaders(instance)
   reapOrphanedSessions(instance)
 
+  db = instance
   return instance
 }
 
@@ -106,7 +109,7 @@ export function migratePlaintextHeaders(instance: Database.Database): void {
 
 export function getDatabase(): Database.Database {
   if (db === null) {
-    db = openDatabase()
+    throw new Error('Database not initialized; call initDatabase first')
   }
 
   return db

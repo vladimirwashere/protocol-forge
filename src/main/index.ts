@@ -1,4 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  safeStorage,
+  type MenuItemConstructorOptions
+} from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -27,6 +35,8 @@ import { sessionManager } from './mcp/session-manager'
 import type { SessionConnectInput, SessionDisconnectInput, SessionStatusInput } from '../shared/ipc'
 import { checkForUpdates, initAutoUpdater, quitAndInstall } from './updater'
 import { fixEnvPath } from './fix-env-path'
+import { initSafeStorage } from './security/safe-storage'
+import { initDatabase } from './persistence/database'
 
 fixEnvPath()
 
@@ -188,6 +198,14 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // Order matters: initDatabase runs migratePlaintextHeaders, which calls canEncrypt().
+  initSafeStorage({
+    canEncrypt: () => safeStorage.isEncryptionAvailable(),
+    encryptString: (plain) => safeStorage.encryptString(plain),
+    decryptString: (buf) => safeStorage.decryptString(buf)
+  })
+  initDatabase(app.getPath('userData'))
+
   Menu.setApplicationMenu(buildAppMenu())
 
   const messageStreamSubscribers = new Set<number>()
