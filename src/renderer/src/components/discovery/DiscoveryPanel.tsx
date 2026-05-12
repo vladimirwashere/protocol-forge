@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import type {
   DiscoveryPrompt,
   DiscoveryResource,
@@ -6,6 +8,13 @@ import type {
 } from '../../../../shared/ipc'
 import SchemaForm from '../forms/SchemaForm'
 import ResultRenderer from '../results/ResultRenderer'
+import DestructiveConfirmModal from './DestructiveConfirmModal'
+import ToolBadges from './ToolBadges'
+
+type PendingDestructiveInvocation = {
+  tool: DiscoveryTool
+  args: Record<string, unknown>
+}
 
 type DiscoveryPanelProps = {
   sessionStatus: SessionStatus | null
@@ -125,6 +134,17 @@ function DiscoveryPanel({
   onClearResult
 }: DiscoveryPanelProps): React.JSX.Element {
   const isReady = sessionStatus?.state === 'ready'
+  const [pendingDestructive, setPendingDestructive] = useState<PendingDestructiveInvocation | null>(
+    null
+  )
+
+  const handleToolSubmit = (tool: DiscoveryTool, args: Record<string, unknown>): void => {
+    if (tool.annotations?.destructiveHint === true) {
+      setPendingDestructive({ tool, args })
+      return
+    }
+    onInvokeTool(tool.name, args)
+  }
 
   return (
     <div className="mt-4 rounded border border-slate-800 bg-slate-900/60 p-4">
@@ -169,24 +189,39 @@ function DiscoveryPanel({
           {tools.length === 0 ? (
             <p className="text-xs text-slate-500">No tools reported by this server.</p>
           ) : (
-            tools.map((tool) => (
-              <div key={tool.name} className="rounded border border-slate-800 bg-slate-900/40 p-3">
-                <div className="mb-2">
-                  <p className="text-xs font-medium text-slate-200">{tool.name}</p>
-                  {tool.description ? (
-                    <p className="mt-1 text-xs text-slate-500">{tool.description}</p>
-                  ) : null}
+            tools.map((tool) => {
+              const displayTitle = tool.title ?? tool.annotations?.title
+              const isDestructive = tool.annotations?.destructiveHint === true
+              return (
+                <div
+                  key={tool.name}
+                  className="rounded border border-slate-800 bg-slate-900/40 p-3"
+                >
+                  <div className="mb-2">
+                    {displayTitle ? (
+                      <>
+                        <p className="text-xs font-medium text-slate-200">{displayTitle}</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-slate-500">{tool.name}</p>
+                      </>
+                    ) : (
+                      <p className="text-xs font-medium text-slate-200">{tool.name}</p>
+                    )}
+                    {tool.description ? (
+                      <p className="mt-1 text-xs text-slate-500">{tool.description}</p>
+                    ) : null}
+                    <ToolBadges annotations={tool.annotations} />
+                  </div>
+                  <SchemaForm
+                    schema={tool.inputSchema}
+                    submitLabel={isDestructive ? 'Invoke Tool…' : 'Invoke Tool'}
+                    disabled={loading}
+                    onSubmit={(args) => {
+                      handleToolSubmit(tool, args)
+                    }}
+                  />
                 </div>
-                <SchemaForm
-                  schema={tool.inputSchema}
-                  submitLabel="Invoke Tool"
-                  disabled={loading}
-                  onSubmit={(args) => {
-                    onInvokeTool(tool.name, args)
-                  }}
-                />
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       ) : null}
@@ -252,6 +287,25 @@ function DiscoveryPanel({
           result={activeResult}
           latencyMs={activeResultLatencyMs}
           onClear={onClearResult}
+        />
+      ) : null}
+
+      {pendingDestructive ? (
+        <DestructiveConfirmModal
+          toolName={pendingDestructive.tool.name}
+          {...(() => {
+            const title =
+              pendingDestructive.tool.title ?? pendingDestructive.tool.annotations?.title
+            return title ? { toolTitle: title } : {}
+          })()}
+          onCancel={() => {
+            setPendingDestructive(null)
+          }}
+          onConfirm={() => {
+            const captured = pendingDestructive
+            setPendingDestructive(null)
+            onInvokeTool(captured.tool.name, captured.args)
+          }}
         />
       ) : null}
     </div>

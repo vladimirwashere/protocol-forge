@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-05-12 (M12.6 done)
+**Last updated:** 2026-05-12 (M13.2 tool annotations + destructive confirmation gate done)
 
 ## Completed Milestones
 
@@ -19,7 +19,16 @@
 
 ## In Progress
 
-**Phase 2 — M12 Client Capabilities.**
+**Phase 2 — M13 Server Feature Rendering.**
+
+- [x] M13.1 spec/SDK reconciliation against MCP 2025-11-25 + SDK 1.29 (findings in `context/DECISIONS.md` decision #14).
+- [x] M13.2 tool annotations as badges in the tool list and invocation header (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, `icons` projected); destructive-tool invocation gated behind explicit confirmation modal.
+- [ ] M13.3 structured tool output: when a tool returns `structuredContent` with an `outputSchema`, validate and render a typed view alongside the raw `content` fallback.
+- [ ] M13.4 argument completion via `completion/complete` powering autocomplete in `SchemaForm` for prompt arguments and resource template parameters (gated on `serverCapabilities.completions`).
+- [ ] M13.5 resource subscriptions: subscribe/unsubscribe on resource detail view with live re-fetch on `notifications/resources/updated` (gated on `serverCapabilities.resources.subscribe`).
+- [ ] M13.6 server logging sub-panel in Inspector rendering `notifications/message` filterable by level; `logging/setLevel` IPC (gated on `serverCapabilities.logging`).
+
+**Phase 2 — M12 Client Capabilities (complete).**
 
 - [x] M12.1 spec/SDK reconciliation against MCP 2025-11-25 + SDK 1.29 (findings in `context/DECISIONS.md` decision #13).
 - [x] M12.2 advertise client capabilities (`sampling`, `elicitation` form+url, `roots.listChanged`) on `new Client(...)`.
@@ -30,7 +39,13 @@
 
 ## Current Task
 
-M12 wrap-up / pre-release validation.
+M13.3 — structured tool output: validate `CallToolResult.structuredContent` against `Tool.outputSchema` and render a typed view alongside the raw `content` fallback. Tool-level `outputSchema` is already plumbed through IPC; the gap is renderer-side validation + dual rendering. M12 release wrap-up (version bump, CHANGELOG, tag) remains untaken and is decoupled from M13 progression.
+
+## Completed This Session (Phase 2 — M13)
+
+- M13.2: tool annotations + destructive-tool confirmation gate. **Shared IPC**: introduced typed `ToolAnnotations` (`title?`, `readOnlyHint?`, `destructiveHint?`, `idempotentHint?`, `openWorldHint?`) and `ToolIcon` (`src`, optional `mimeType`, `sizes`, `theme: 'light'|'dark'`) in `src/shared/ipc.ts`; `DiscoveryTool` now exposes `title?`, typed `annotations?: ToolAnnotations`, and `icons?: ToolIcon[]` instead of opaque `Record<string, unknown>`. **Main**: `src/main/mcp/session/discovery.ts` gained `projectToolAnnotations` and `projectToolIcons` helpers that defensively pick recognized fields off the SDK tool object, drop wrong-typed values, and omit the field entirely when no recognized data remains (spec is explicit that annotations are untrusted hints, so the projection treats them as such). **Renderer**: new `components/discovery/ToolBadges.tsx` renders colored badges for the four boolean hints with explanatory `title=` tooltips; new `components/discovery/DestructiveConfirmModal.tsx` is a Cancel / Invoke-anyway modal rendered when the user submits a tool with `destructiveHint: true`. `DiscoveryPanel` now shows `tool.title` (or `annotations.title`) as the display name above the monospace `tool.name`, mounts `ToolBadges` under the description, and routes destructive invocations through the confirmation gate before forwarding to `onInvokeTool`. **Tests**: new `tests/discovery-list-tools.test.ts` (7 tests) covers minimal projection, title + description pass-through, recognized boolean fields only, stripping of unknown / wrong-typed annotation values, defensive icon projection (rejects null entries, entries without `src`, non-string sizes, invalid themes), and omission of `icons` when no valid entry remains. Full suite: 128 tests pass.
+
+- M13.1: spec/SDK reconciliation for M13 Server Feature Rendering. Anchored M13 to MCP spec 2025-11-25 + SDK 1.29.0 (same baseline as decision #13). Recorded findings in `context/DECISIONS.md` decision #14 covering five surface areas: (1) **tool annotations** — exact field list (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), tool-level additions (`title`, `icons`), and the deferral of `execution.taskSupport` until P7's `tasks` capability lands; (2) **structured tool output** — `CallToolResult.structuredContent` + `outputSchema` validation with `content` always-fallback contract per spec; deep `$ref`/`oneOf` deferred to M20; (3) **completion** — `Client.complete` shape, `ref/prompt`+`ref/resource` union (note `ResourceReferenceSchema` deprecated in favor of `ResourceTemplateReferenceSchema`), new `params.context.arguments` for cascading completions, gated on `serverCapabilities.completions`; (4) **resource subscriptions** — `Client.subscribeResource`/`unsubscribeResource` + `notifications/resources/updated`, gated on `serverCapabilities.resources.subscribe`, session-scoped (no cross-reconnect persistence), drained on disconnect/shutdown/error like inflight/elicitation; (5) **server logging** — fixed eight-level `LoggingLevelSchema` (RFC 5424), `Client.setLoggingLevel`, `notifications/message` with `data: unknown`, no separate persistence (already captured by `MessageRecorder`); Logs sub-panel is a renderer projection over the protocol message stream filtered by `method === 'notifications/message'`.
 
 ## Completed This Session (Phase 2 — M12)
 

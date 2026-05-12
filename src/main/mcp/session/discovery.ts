@@ -8,7 +8,9 @@ import type {
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
   DiscoveryReadResourceInput,
-  InflightOperationProgress
+  InflightOperationProgress,
+  ToolAnnotations,
+  ToolIcon
 } from '../../../shared/ipc'
 
 export type DiscoveryProgressCallback = (progress: InflightOperationProgress) => void
@@ -46,6 +48,38 @@ async function runTimedOperation<T>(
   return { value, ms: Math.max(0, Date.now() - startedAt) }
 }
 
+function projectToolAnnotations(raw: unknown): ToolAnnotations | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined
+  const source = raw as Record<string, unknown>
+  const projected: ToolAnnotations = {}
+  if (typeof source.title === 'string') projected.title = source.title
+  if (typeof source.readOnlyHint === 'boolean') projected.readOnlyHint = source.readOnlyHint
+  if (typeof source.destructiveHint === 'boolean')
+    projected.destructiveHint = source.destructiveHint
+  if (typeof source.idempotentHint === 'boolean') projected.idempotentHint = source.idempotentHint
+  if (typeof source.openWorldHint === 'boolean') projected.openWorldHint = source.openWorldHint
+  return Object.keys(projected).length > 0 ? projected : undefined
+}
+
+function projectToolIcons(raw: unknown): ToolIcon[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const icons: ToolIcon[] = []
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== 'object') continue
+    const source = entry as Record<string, unknown>
+    if (typeof source.src !== 'string') continue
+    const icon: ToolIcon = { src: source.src }
+    if (typeof source.mimeType === 'string') icon.mimeType = source.mimeType
+    if (Array.isArray(source.sizes)) {
+      const sizes = source.sizes.filter((size): size is string => typeof size === 'string')
+      if (sizes.length > 0) icon.sizes = sizes
+    }
+    if (source.theme === 'light' || source.theme === 'dark') icon.theme = source.theme
+    icons.push(icon)
+  }
+  return icons.length > 0 ? icons : undefined
+}
+
 export async function listTools(client: Client): Promise<DiscoveryListToolsResponse> {
   const listed = await client.listTools()
 
@@ -56,11 +90,15 @@ export async function listTools(client: Client): Promise<DiscoveryListToolsRespo
         inputSchema: tool.inputSchema
       }
 
+      if (typeof tool.title === 'string') mapped.title = tool.title
       if (tool.description !== undefined) mapped.description = tool.description
       if (tool.outputSchema !== undefined) mapped.outputSchema = tool.outputSchema
-      if (tool.annotations !== undefined) {
-        mapped.annotations = tool.annotations as Record<string, unknown>
-      }
+
+      const annotations = projectToolAnnotations(tool.annotations)
+      if (annotations) mapped.annotations = annotations
+
+      const icons = projectToolIcons((tool as { icons?: unknown }).icons)
+      if (icons) mapped.icons = icons
 
       return mapped
     })

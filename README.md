@@ -14,6 +14,7 @@ It is aimed at developers who build or integrate MCP servers and need reliable v
 |---|---|
 | **Multi-transport connections** | Connect over `stdio` (local processes) or `streamable-http`. Profiles are saved and reusable. |
 | **Capability discovery** | List tools, resources, and prompts for the active session in a tabbed panel. |
+| **Tool annotations** | Server-supplied tool hints (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) render as badges. Tools marked destructive require explicit confirmation before invocation. Annotations are treated as untrusted hints — not security guarantees. |
 | **Schema-driven invocation** | Invoke tools and read resources/prompts through auto-generated forms derived from the server's JSON Schema. Results include structured output and round-trip latency. |
 | **Protocol Inspector** | Stream live JSON-RPC traffic with direction/method/text filters, pause/resume, and per-message detail. |
 | **Session history** | All sessions and messages are persisted locally. Replay any historical session's protocol trace from the inspector. |

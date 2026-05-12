@@ -192,12 +192,29 @@ export type DiscoverySessionInput = {
   sessionId: string
 }
 
+export type ToolAnnotations = {
+  title?: string
+  readOnlyHint?: boolean
+  destructiveHint?: boolean
+  idempotentHint?: boolean
+  openWorldHint?: boolean
+}
+
+export type ToolIcon = {
+  src: string
+  mimeType?: string
+  sizes?: string[]
+  theme?: 'light' | 'dark'
+}
+
 export type DiscoveryTool = {
   name: string
+  title?: string
   description?: string
   inputSchema: Record<string, unknown>
   outputSchema?: Record<string, unknown>
-  annotations?: Record<string, unknown>
+  annotations?: ToolAnnotations
+  icons?: ToolIcon[]
 }
 
 export type DiscoveryResource = {
