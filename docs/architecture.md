@@ -33,6 +33,7 @@ Key modules:
 
 - `mcp/session-manager.ts`: session lifecycle, discovery invocation, latency/error metadata capture, message persistence, and the cross-session `PendingSamplingStore` (server-initiated `sampling/createMessage` requests parked until the developer responds via the renderer).
 - `mcp/session/sampling.ts`: in-memory pending-request store and `CreateMessageRequestSchema` handler registration; pending entries scoped by session id and drained on disconnect/error.
+- `mcp/session/elicitation.ts`: in-memory pending-request store, `ElicitRequestSchema` handler, and `ElicitationCompleteNotificationSchema` handler for URL-mode completion. URL-mode `accept` actions route through a `SessionManager`-injected `shell.openExternal` opener; non-accept actions and form mode never touch the shell.
 - `mcp/transports/*`: concrete `stdio` and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
 - `persistence/database.ts`: SQLite initialization and schema guards.
 - `persistence/*Repo.ts`: repository layer for profiles/sessions/messages.
@@ -83,7 +84,15 @@ Responsibilities:
 3. Main pushes the updated pending list to renderer subscribers; the renderer's `SamplingPanel` surfaces the request and a compose form.
 4. Developer responds (text/image/audio content) or declines; main resolves/rejects the deferred promise so the SDK delivers the JSON-RPC response. No LLM backend is integrated — responses are manually composed.
 
-### 5. Protocol inspector stream
+### 5. Server-initiated elicitation
+
+1. Server calls `elicitation/create` (form or URL mode) over an active session.
+2. Session manager's handler creates a pending entry keyed by a generated request id and returns a deferred promise to the SDK.
+3. Main pushes the updated pending list to renderer subscribers; the renderer's `ElicitationModal` shows the head-of-queue request (form fields or URL prompt).
+4. Developer accepts/declines/cancels. For URL-mode `accept`, main calls `shell.openExternal` against the stored URL before resolving the promise. Form-mode `accept` delivers the user's responses as the result `content`.
+5. For URL-mode requests, the server may also send `notifications/elicitation/complete`, which closes any still-pending entry with `{ action: 'accept' }`.
+
+### 6. Protocol inspector stream
 
 1. Session manager emits captured protocol messages.
 2. Main batches messages (100ms / 50-message flush) and pushes to subscribed renderers.

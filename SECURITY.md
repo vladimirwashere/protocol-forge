@@ -40,6 +40,19 @@ behalf. Pending requests are scoped to the originating session and
 auto-rejected on disconnect/error so promises never leak across
 sessions.
 
+**Elicitation.** Servers may call `elicitation/create` in either `form`
+or `url` mode. Form-mode requests render a constrained-schema input
+panel; the user's response is sent back as the
+`{ action: 'accept'|'decline'|'cancel', content? }` result with no
+processing. URL-mode requests show the destination URL to the user and
+only navigate via `shell.openExternal` after an explicit Accept click
+— the renderer never receives shell access, the open call is performed
+in main against the URL stored alongside the pending entry, and Decline
+or Cancel never opens the browser. The matching
+`notifications/elicitation/complete` notification resolves any
+still-pending URL entry. Pending elicitations are session-scoped and
+drained on disconnect/error like sampling.
+
 ## Data at Rest
 
 Protocol Forge persists state in a local SQLite database

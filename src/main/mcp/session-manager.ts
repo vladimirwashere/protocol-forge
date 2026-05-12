@@ -11,6 +11,8 @@ import type {
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
   DiscoveryReadResourceInput,
+  ElicitationPendingRequest,
+  ElicitationRespondInput,
   SamplingPendingRequest,
   SamplingRejectInput,
   SamplingRespondInput,
@@ -40,6 +42,7 @@ import { MessageRecorder } from './session/tracing'
 import * as discovery from './session/discovery'
 import { notifyRootsChanged, registerRootsHandler } from './session/roots'
 import { PendingSamplingStore, registerSamplingHandler } from './session/sampling'
+import { PendingElicitationStore, registerElicitationHandler } from './session/elicitation'
 import {
   buildStatusFromPersisted,
   buildStatusFromRuntime,
@@ -49,10 +52,20 @@ import {
 export { transitionSessionState } from './session/state-machine'
 export type { SessionEvent, RuntimeSession } from './session/state-machine'
 
+export type ExternalUrlOpener = (url: string) => Promise<void>
+
 export class SessionManager {
   private readonly sessions = new Map<string, RuntimeSession>()
   private readonly recorder = new MessageRecorder()
   private readonly samplingStore = new PendingSamplingStore()
+  private readonly elicitationStore = new PendingElicitationStore()
+  private externalUrlOpener: ExternalUrlOpener = async () => {
+    // Default no-op so unit tests don't need Electron's shell module.
+  }
+
+  setExternalUrlOpener(opener: ExternalUrlOpener): void {
+    this.externalUrlOpener = opener
+  }
 
   onMessage(listener: (message: SessionMessage) => void): () => void {
     return this.recorder.onMessage(listener)
@@ -85,6 +98,39 @@ export class SessionManager {
         `Sampling request ${input.requestId} was not found`
       )
     }
+    return { ok: true }
+  }
+
+  onElicitationChange(listener: () => void): () => void {
+    return this.elicitationStore.onChange(listener)
+  }
+
+  listPendingElicitations(): ElicitationPendingRequest[] {
+    return this.elicitationStore.list()
+  }
+
+  async respondElicitation(input: ElicitationRespondInput): Promise<{ ok: true }> {
+    const entry = this.elicitationStore.get(input.requestId)
+    if (!entry) {
+      throw new AppError(
+        'ELICITATION_REQUEST_NOT_FOUND',
+        `Elicitation request ${input.requestId} was not found`
+      )
+    }
+
+    // URL-mode 'accept' opens the destination in the user's browser before resolving the
+    // server's request. Decline/cancel and form-mode actions never touch the shell.
+    if (entry.mode === 'url' && input.action === 'accept') {
+      if (!entry.url) {
+        throw new AppError(
+          'ELICITATION_URL_NOT_AVAILABLE',
+          `Elicitation ${input.requestId} has no URL to open`
+        )
+      }
+      await this.externalUrlOpener(entry.url)
+    }
+
+    this.elicitationStore.respond(input)
     return { ok: true }
   }
 
@@ -145,6 +191,7 @@ export class SessionManager {
       })
 
       registerSamplingHandler(client, sessionId, this.samplingStore, () => randomUUID())
+      registerElicitationHandler(client, sessionId, this.elicitationStore, () => randomUUID())
 
       const runtime: RuntimeSession = {
         id: sessionId,
@@ -199,6 +246,7 @@ export class SessionManager {
       this.setSessionState(runtime.id, transitionSessionState(runtime.state, 'disconnected'))
       this.recorder.clearPendingRequestTimes(runtime.id)
       this.samplingStore.rejectBySession(runtime.id, new Error('Session disconnected'))
+      this.elicitationStore.rejectBySession(runtime.id, new Error('Session disconnected'))
 
       return { ok: true }
     } catch (error) {
@@ -220,6 +268,7 @@ export class SessionManager {
           this.setSessionState(session.id, 'disconnected')
           this.recorder.clearPendingRequestTimes(session.id)
           this.samplingStore.rejectBySession(session.id, new Error('Session disconnected'))
+          this.elicitationStore.rejectBySession(session.id, new Error('Session disconnected'))
         } catch (error) {
           this.setSessionError(session.id, getErrorMessage(error))
         }
@@ -345,6 +394,7 @@ export class SessionManager {
     })
     this.recorder.clearPendingRequestTimes(sessionId)
     this.samplingStore.rejectBySession(sessionId, new Error(errorMessage))
+    this.elicitationStore.rejectBySession(sessionId, new Error(errorMessage))
   }
 }
 

@@ -20,6 +20,9 @@ export const IPC_CHANNELS = {
   mcpSamplingRespond: 'mcp-sampling:respond',
   mcpSamplingReject: 'mcp-sampling:reject',
   mcpSamplingStream: 'mcp-sampling:stream',
+  mcpElicitationListPending: 'mcp-elicitation:list-pending',
+  mcpElicitationRespond: 'mcp-elicitation:respond',
+  mcpElicitationStream: 'mcp-elicitation:stream',
   appCheckForUpdates: 'app:check-for-updates',
   appInstallUpdate: 'app:install-update',
   appUpdateStatusStream: 'app:update-status-stream'
@@ -281,6 +284,33 @@ export type SamplingStreamInput = {
 
 export type SamplingPendingListener = (pending: SamplingPendingRequest[]) => void
 
+export type ElicitationContentValue = string | number | boolean | string[]
+
+export type ElicitationPendingRequest = {
+  requestId: string
+  sessionId: string
+  createdAt: string
+  mode: 'form' | 'url'
+  message: string
+  requestedSchema?: unknown
+  elicitationId?: string
+  url?: string
+}
+
+export type ElicitationRespondInput = {
+  requestId: string
+  action: 'accept' | 'decline' | 'cancel'
+  content?: Record<string, ElicitationContentValue>
+}
+
+export type ElicitationListPendingInput = Record<string, never>
+
+export type ElicitationStreamInput = {
+  enabled: boolean
+}
+
+export type ElicitationPendingListener = (pending: ElicitationPendingRequest[]) => void
+
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
@@ -317,4 +347,7 @@ export type AppApi = {
   respondSampling: (input: SamplingRespondInput) => Promise<{ ok: true }>
   rejectSampling: (input: SamplingRejectInput) => Promise<{ ok: true }>
   subscribeSampling: (listener: SamplingPendingListener) => () => void
+  listPendingElicitations: () => Promise<ElicitationPendingRequest[]>
+  respondElicitation: (input: ElicitationRespondInput) => Promise<{ ok: true }>
+  subscribeElicitations: (listener: ElicitationPendingListener) => () => void
 }

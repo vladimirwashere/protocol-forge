@@ -5,6 +5,9 @@ import type {
   DiscoveryGetPromptInput,
   DiscoveryReadResourceInput,
   DiscoverySessionInput,
+  ElicitationListPendingInput,
+  ElicitationRespondInput,
+  ElicitationStreamInput,
   SamplingListPendingInput,
   SamplingRejectInput,
   SamplingRespondInput,
@@ -175,3 +178,26 @@ export const samplingStreamSchema = z.object({
   enabled: z.boolean()
 })
 assertEquals<Equals<z.infer<typeof samplingStreamSchema>, SamplingStreamInput>>()
+
+// `.default({})` lets the renderer invoke without an argument (an undefined input becomes {}).
+export const elicitationListPendingSchema = z.object({}).strict().default({})
+assertEquals<Equals<z.infer<typeof elicitationListPendingSchema>, ElicitationListPendingInput>>()
+
+const elicitationContentValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string())
+])
+
+export const elicitationRespondSchema = z.object({
+  requestId: z.string(),
+  action: z.enum(['accept', 'decline', 'cancel']),
+  content: z.record(z.string(), elicitationContentValueSchema).optional()
+})
+assertEquals<Equals<z.infer<typeof elicitationRespondSchema>, ElicitationRespondInput>>()
+
+export const elicitationStreamSchema = z.object({
+  enabled: z.boolean()
+})
+assertEquals<Equals<z.infer<typeof elicitationStreamSchema>, ElicitationStreamInput>>()

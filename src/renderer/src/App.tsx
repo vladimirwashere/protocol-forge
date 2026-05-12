@@ -5,11 +5,13 @@ import AppShell from './components/layout/AppShell'
 import SectionErrorBoundary from './components/layout/SectionErrorBoundary'
 import StatusBar from './components/layout/StatusBar'
 import ToastViewport from './components/notifications/ToastViewport'
+import ElicitationModal from './components/elicitation/ElicitationModal'
 import SamplingPanel from './components/sampling/SamplingPanel'
 import ServerSidebar from './components/sidebar/ServerSidebar'
 import WorkspacePanel from './components/workspace/WorkspacePanel'
 import { useDiscoveryStore } from './stores/discovery-store'
 import { useMessageStore } from './stores/message-store'
+import { useElicitationStore } from './stores/elicitation-store'
 import { useSamplingStore } from './stores/sampling-store'
 import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
@@ -86,6 +88,11 @@ function App(): React.JSX.Element {
   const subscribeSampling = useSamplingStore((state) => state.subscribe)
   const respondSampling = useSamplingStore((state) => state.respond)
   const rejectSampling = useSamplingStore((state) => state.reject)
+
+  const elicitationPending = useElicitationStore((state) => state.pending)
+  const elicitationError = useElicitationStore((state) => state.error)
+  const subscribeElicitations = useElicitationStore((state) => state.subscribe)
+  const respondElicitation = useElicitationStore((state) => state.respond)
 
   const sessionId = sessionStatus?.sessionId ?? null
   const lastDiscoverySessionKeyRef = useRef<string>('')
@@ -202,6 +209,10 @@ function App(): React.JSX.Element {
   useEffect(() => {
     subscribeSampling()
   }, [subscribeSampling])
+
+  useEffect(() => {
+    subscribeElicitations()
+  }, [subscribeElicitations])
 
   useEffect(() => {
     if (lastUpdateStateRef.current === updateStatus.state) {
@@ -349,6 +360,11 @@ function App(): React.JSX.Element {
             />
           </SectionErrorBoundary>
         }
+      />
+      <ElicitationModal
+        pending={elicitationPending}
+        error={elicitationError}
+        onRespond={respondElicitation}
       />
       <ToastViewport />
     </>

@@ -16,6 +16,7 @@ import {
   type AppMeta,
   type DiscoveryCallToolInput,
   type DiscoveryGetPromptInput,
+  type ElicitationPendingRequest,
   type PingResponse,
   type SamplingPendingRequest,
   type SessionConnectInput,
@@ -39,6 +40,9 @@ import {
   discoveryGetPromptSchema,
   discoveryReadResourceSchema,
   discoverySessionSchema,
+  elicitationListPendingSchema,
+  elicitationRespondSchema,
+  elicitationStreamSchema,
   samplingListPendingSchema,
   samplingRejectSchema,
   samplingRespondSchema,
@@ -220,6 +224,8 @@ app.whenReady().then(() => {
   })
   initDatabase(app.getPath('userData'))
 
+  sessionManager.setExternalUrlOpener((url) => shell.openExternal(url))
+
   Menu.setApplicationMenu(buildAppMenu())
 
   const messageStreamSubscribers = new Set<number>()
@@ -287,6 +293,22 @@ app.whenReady().then(() => {
   sessionManager.onSamplingChange(() => {
     if (samplingStreamSubscribers.size === 0) return
     broadcastSamplingPending(sessionManager.listPendingSampling())
+  })
+
+  const elicitationStreamSubscribers = new Set<number>()
+
+  const broadcastElicitationPending = (pending: ElicitationPendingRequest[]): void => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!elicitationStreamSubscribers.has(window.webContents.id) || window.isDestroyed()) {
+        continue
+      }
+      window.webContents.send(IPC_CHANNELS.mcpElicitationStream, pending)
+    }
+  }
+
+  sessionManager.onElicitationChange(() => {
+    if (elicitationStreamSubscribers.size === 0) return
+    broadcastElicitationPending(sessionManager.listPendingElicitations())
   })
 
   // Set app user model id for windows
@@ -421,6 +443,31 @@ app.whenReady().then(() => {
     return { ok: true as const }
   })
 
+  registerIpcHandler(IPC_CHANNELS.mcpElicitationListPending, elicitationListPendingSchema, () =>
+    sessionManager.listPendingElicitations()
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpElicitationRespond, elicitationRespondSchema, (input) =>
+    // Zod optional → `T | undefined`; IPC type uses `?:` only. Schema validates the shape.
+    sessionManager.respondElicitation(
+      input as Parameters<typeof sessionManager.respondElicitation>[0]
+    )
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpElicitationStream, elicitationStreamSchema, (input, event) => {
+    if (input.enabled) {
+      elicitationStreamSubscribers.add(event.sender.id)
+    } else {
+      elicitationStreamSubscribers.delete(event.sender.id)
+    }
+
+    event.sender.once('destroyed', () => {
+      elicitationStreamSubscribers.delete(event.sender.id)
+    })
+
+    return { ok: true as const }
+  })
+
   registerIpcHandlerNoInput(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
   registerIpcHandlerNoInput(IPC_CHANNELS.appInstallUpdate, () => {
     quitAndInstall()
@@ -468,6 +515,9 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingRespond)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingReject)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingStream)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpElicitationListPending)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpElicitationRespond)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpElicitationStream)
   ipcMain.removeHandler(IPC_CHANNELS.appCheckForUpdates)
   ipcMain.removeHandler(IPC_CHANNELS.appInstallUpdate)
 })

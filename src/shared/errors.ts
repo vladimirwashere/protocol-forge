@@ -6,6 +6,8 @@ export type AppErrorCode =
   | 'SESSION_CONNECT_FAILED'
   | 'SESSION_DISCONNECT_FAILED'
   | 'SAMPLING_REQUEST_NOT_FOUND'
+  | 'ELICITATION_REQUEST_NOT_FOUND'
+  | 'ELICITATION_URL_NOT_AVAILABLE'
 
 export class AppError extends Error {
   readonly code: AppErrorCode

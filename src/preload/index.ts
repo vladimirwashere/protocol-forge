@@ -48,6 +48,21 @@ const api: AppApi = {
       void ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingStream, { enabled: false })
     }
   },
+  listPendingElicitations: () => ipcRenderer.invoke(IPC_CHANNELS.mcpElicitationListPending),
+  respondElicitation: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpElicitationRespond, input),
+  subscribeElicitations: (listener) => {
+    const handler = (_event: unknown, pending: Parameters<typeof listener>[0]): void => {
+      listener(pending)
+    }
+
+    ipcRenderer.on(IPC_CHANNELS.mcpElicitationStream, handler)
+    void ipcRenderer.invoke(IPC_CHANNELS.mcpElicitationStream, { enabled: true })
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.mcpElicitationStream, handler)
+      void ipcRenderer.invoke(IPC_CHANNELS.mcpElicitationStream, { enabled: false })
+    }
+  },
   checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
   installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate),
   subscribeUpdateStatus: (listener) => {
