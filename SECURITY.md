@@ -40,6 +40,13 @@ behalf. Pending requests are scoped to the originating session and
 auto-rejected on disconnect/error so promises never leak across
 sessions.
 
+**Cancellation.** Tool/resource/prompt invocations are tracked per
+session with an `AbortController`. The user can cancel any in-flight
+operation from the inspector panel; cancellation aborts the SDK request
+and emits `notifications/cancelled` on the transport so the server can
+release work it had started. When a session disconnects or errors, all
+of its still-pending in-flight controllers are aborted automatically.
+
 **Elicitation.** Servers may call `elicitation/create` in either `form`
 or `url` mode. Form-mode requests render a constrained-schema input
 panel; the user's response is sent back as the

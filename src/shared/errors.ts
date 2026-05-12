@@ -8,6 +8,7 @@ export type AppErrorCode =
   | 'SAMPLING_REQUEST_NOT_FOUND'
   | 'ELICITATION_REQUEST_NOT_FOUND'
   | 'ELICITATION_URL_NOT_AVAILABLE'
+  | 'INFLIGHT_OPERATION_NOT_FOUND'
 
 export class AppError extends Error {
   readonly code: AppErrorCode

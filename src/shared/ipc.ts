@@ -23,6 +23,9 @@ export const IPC_CHANNELS = {
   mcpElicitationListPending: 'mcp-elicitation:list-pending',
   mcpElicitationRespond: 'mcp-elicitation:respond',
   mcpElicitationStream: 'mcp-elicitation:stream',
+  mcpInflightList: 'mcp-inflight:list',
+  mcpInflightCancel: 'mcp-inflight:cancel',
+  mcpInflightStream: 'mcp-inflight:stream',
   appCheckForUpdates: 'app:check-for-updates',
   appInstallUpdate: 'app:install-update',
   appUpdateStatusStream: 'app:update-status-stream'
@@ -311,6 +314,37 @@ export type ElicitationStreamInput = {
 
 export type ElicitationPendingListener = (pending: ElicitationPendingRequest[]) => void
 
+export type InflightOperationKind = 'tool' | 'resource' | 'prompt'
+
+export type InflightOperationProgress = {
+  progress: number
+  total?: number
+  message?: string
+  at: string
+}
+
+export type InflightOperationSummary = {
+  operationId: string
+  sessionId: string
+  kind: InflightOperationKind
+  label: string
+  startedAt: string
+  lastProgress?: InflightOperationProgress
+}
+
+export type InflightListInput = Record<string, never>
+
+export type InflightCancelInput = {
+  operationId: string
+  reason?: string
+}
+
+export type InflightStreamInput = {
+  enabled: boolean
+}
+
+export type InflightOperationsListener = (operations: InflightOperationSummary[]) => void
+
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
@@ -350,4 +384,7 @@ export type AppApi = {
   listPendingElicitations: () => Promise<ElicitationPendingRequest[]>
   respondElicitation: (input: ElicitationRespondInput) => Promise<{ ok: true }>
   subscribeElicitations: (listener: ElicitationPendingListener) => () => void
+  listInflightOperations: () => Promise<InflightOperationSummary[]>
+  cancelInflightOperation: (input: InflightCancelInput) => Promise<{ ok: true }>
+  subscribeInflightOperations: (listener: InflightOperationsListener) => () => void
 }

@@ -34,6 +34,7 @@ Key modules:
 - `mcp/session-manager.ts`: session lifecycle, discovery invocation, latency/error metadata capture, message persistence, and the cross-session `PendingSamplingStore` (server-initiated `sampling/createMessage` requests parked until the developer responds via the renderer).
 - `mcp/session/sampling.ts`: in-memory pending-request store and `CreateMessageRequestSchema` handler registration; pending entries scoped by session id and drained on disconnect/error.
 - `mcp/session/elicitation.ts`: in-memory pending-request store, `ElicitRequestSchema` handler, and `ElicitationCompleteNotificationSchema` handler for URL-mode completion. URL-mode `accept` actions route through a `SessionManager`-injected `shell.openExternal` opener; non-accept actions and form mode never touch the shell.
+- `mcp/session/inflight.ts`: in-memory store of running tool/resource/prompt invocations keyed by generated `operationId`, each entry carrying an `AbortController`. `SessionManager.runTracked` allocates an entry per discovery call, forwards `signal` + `onprogress` into the SDK's `RequestOptions`, removes the entry in `finally`, and exposes a `cancelInflightOperation` method that calls `controller.abort()` (the SDK then auto-emits `notifications/cancelled` on the wire).
 - `mcp/transports/*`: concrete `stdio` and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
 - `persistence/database.ts`: SQLite initialization and schema guards.
 - `persistence/*Repo.ts`: repository layer for profiles/sessions/messages.
@@ -92,7 +93,15 @@ Responsibilities:
 4. Developer accepts/declines/cancels. For URL-mode `accept`, main calls `shell.openExternal` against the stored URL before resolving the promise. Form-mode `accept` delivers the user's responses as the result `content`.
 5. For URL-mode requests, the server may also send `notifications/elicitation/complete`, which closes any still-pending entry with `{ action: 'accept' }`.
 
-### 6. Protocol inspector stream
+### 6. In-flight operation tracking, progress, and cancellation
+
+1. Renderer invokes a tool/resource/prompt over an active ready session.
+2. `SessionManager.runTracked` allocates a fresh `operationId` + `AbortController`, registers an entry in `InflightOperationsStore`, and forwards the controller's signal plus a progress callback into the SDK call via `RequestOptions.signal` and `RequestOptions.onprogress`.
+3. Incoming `notifications/progress` from the server trigger the `onprogress` callback, which records `{ progress, total?, message?, at }` on the entry and broadcasts the updated operation list to subscribed renderers.
+4. When the call resolves or rejects, the entry is removed in `finally`. If the renderer calls `cancelInflightOperation`, the store aborts the controller — the SDK raises `AbortError` from the pending `request()` and emits `notifications/cancelled` on the transport so the server can stop work.
+5. Inflight entries scoped to a session are drained (with their controllers aborted) on disconnect, shutdown, or session error.
+
+### 7. Protocol inspector stream
 
 1. Session manager emits captured protocol messages.
 2. Main batches messages (100ms / 50-message flush) and pushes to subscribed renderers.

@@ -63,6 +63,21 @@ const api: AppApi = {
       void ipcRenderer.invoke(IPC_CHANNELS.mcpElicitationStream, { enabled: false })
     }
   },
+  listInflightOperations: () => ipcRenderer.invoke(IPC_CHANNELS.mcpInflightList),
+  cancelInflightOperation: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpInflightCancel, input),
+  subscribeInflightOperations: (listener) => {
+    const handler = (_event: unknown, operations: Parameters<typeof listener>[0]): void => {
+      listener(operations)
+    }
+
+    ipcRenderer.on(IPC_CHANNELS.mcpInflightStream, handler)
+    void ipcRenderer.invoke(IPC_CHANNELS.mcpInflightStream, { enabled: true })
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.mcpInflightStream, handler)
+      void ipcRenderer.invoke(IPC_CHANNELS.mcpInflightStream, { enabled: false })
+    }
+  },
   checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
   installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate),
   subscribeUpdateStatus: (listener) => {

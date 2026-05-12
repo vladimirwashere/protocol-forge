@@ -21,6 +21,7 @@ It is aimed at developers who build or integrate MCP servers and need reliable v
 | **Workspace roots** | Configure `file://` workspace roots per profile. Connected servers can list them via `roots/list`; changes propagate as `notifications/roots/list_changed`. |
 | **Sampling response panel** | When a connected server calls `sampling/createMessage`, the request appears in an in-app panel where you compose a mock response (text/image/audio) by hand. No LLM backend is contacted. |
 | **Elicitation modal** | Servers calling `elicitation/create` get a modal with three actions (Accept/Decline/Cancel). Form mode renders the requested schema (string/enum/number/boolean/array); URL mode opens the destination via `shell.openExternal` only after an explicit Accept. |
+| **In-flight progress + cancellation** | Tool/resource/prompt invocations stream live progress (`notifications/progress`) into an in-app panel and can be cancelled mid-call — cancellation aborts the request and emits `notifications/cancelled` so the server can stop work. |
 | **In-app auto-update** | The app checks for new releases on launch and offers a one-click restart when an update is ready. |
 
 ## Installing a Release

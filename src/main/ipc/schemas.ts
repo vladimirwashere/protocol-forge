@@ -8,6 +8,9 @@ import type {
   ElicitationListPendingInput,
   ElicitationRespondInput,
   ElicitationStreamInput,
+  InflightCancelInput,
+  InflightListInput,
+  InflightStreamInput,
   SamplingListPendingInput,
   SamplingRejectInput,
   SamplingRespondInput,
@@ -201,3 +204,18 @@ export const elicitationStreamSchema = z.object({
   enabled: z.boolean()
 })
 assertEquals<Equals<z.infer<typeof elicitationStreamSchema>, ElicitationStreamInput>>()
+
+// `.default({})` lets the renderer invoke without an argument (an undefined input becomes {}).
+export const inflightListSchema = z.object({}).strict().default({})
+assertEquals<Equals<z.infer<typeof inflightListSchema>, InflightListInput>>()
+
+export const inflightCancelSchema = z.object({
+  operationId: z.string(),
+  reason: z.string().optional()
+})
+assertEquals<Equals<z.infer<typeof inflightCancelSchema>, InflightCancelInput>>()
+
+export const inflightStreamSchema = z.object({
+  enabled: z.boolean()
+})
+assertEquals<Equals<z.infer<typeof inflightStreamSchema>, InflightStreamInput>>()

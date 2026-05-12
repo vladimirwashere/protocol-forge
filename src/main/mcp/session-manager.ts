@@ -13,6 +13,8 @@ import type {
   DiscoveryReadResourceInput,
   ElicitationPendingRequest,
   ElicitationRespondInput,
+  InflightCancelInput,
+  InflightOperationSummary,
   SamplingPendingRequest,
   SamplingRejectInput,
   SamplingRespondInput,
@@ -43,6 +45,7 @@ import * as discovery from './session/discovery'
 import { notifyRootsChanged, registerRootsHandler } from './session/roots'
 import { PendingSamplingStore, registerSamplingHandler } from './session/sampling'
 import { PendingElicitationStore, registerElicitationHandler } from './session/elicitation'
+import { InflightOperationsStore, type InflightOperationKind } from './session/inflight'
 import {
   buildStatusFromPersisted,
   buildStatusFromRuntime,
@@ -59,6 +62,7 @@ export class SessionManager {
   private readonly recorder = new MessageRecorder()
   private readonly samplingStore = new PendingSamplingStore()
   private readonly elicitationStore = new PendingElicitationStore()
+  private readonly inflightStore = new InflightOperationsStore()
   private externalUrlOpener: ExternalUrlOpener = async () => {
     // Default no-op so unit tests don't need Electron's shell module.
   }
@@ -131,6 +135,25 @@ export class SessionManager {
     }
 
     this.elicitationStore.respond(input)
+    return { ok: true }
+  }
+
+  onInflightChange(listener: () => void): () => void {
+    return this.inflightStore.onChange(listener)
+  }
+
+  listInflightOperations(): InflightOperationSummary[] {
+    return this.inflightStore.list()
+  }
+
+  cancelInflightOperation(input: InflightCancelInput): { ok: true } {
+    const cancelled = this.inflightStore.cancel(input.operationId, input.reason)
+    if (!cancelled) {
+      throw new AppError(
+        'INFLIGHT_OPERATION_NOT_FOUND',
+        `Inflight operation ${input.operationId} was not found`
+      )
+    }
     return { ok: true }
   }
 
@@ -247,6 +270,7 @@ export class SessionManager {
       this.recorder.clearPendingRequestTimes(runtime.id)
       this.samplingStore.rejectBySession(runtime.id, new Error('Session disconnected'))
       this.elicitationStore.rejectBySession(runtime.id, new Error('Session disconnected'))
+      this.inflightStore.rejectBySession(runtime.id, 'Session disconnected')
 
       return { ok: true }
     } catch (error) {
@@ -269,6 +293,7 @@ export class SessionManager {
           this.recorder.clearPendingRequestTimes(session.id)
           this.samplingStore.rejectBySession(session.id, new Error('Session disconnected'))
           this.elicitationStore.rejectBySession(session.id, new Error('Session disconnected'))
+          this.inflightStore.rejectBySession(session.id, 'Session disconnected')
         } catch (error) {
           this.setSessionError(session.id, getErrorMessage(error))
         }
@@ -321,15 +346,54 @@ export class SessionManager {
   }
 
   async callTool(input: DiscoveryCallToolInput): Promise<DiscoveryOperationResult> {
-    return discovery.callTool(this.getReadyRuntimeSession(input.sessionId).client, input)
+    return this.runTracked(input.sessionId, 'tool', input.name, (client, options) =>
+      discovery.callTool(client, input, options)
+    )
   }
 
   async readResource(input: DiscoveryReadResourceInput): Promise<DiscoveryOperationResult> {
-    return discovery.readResource(this.getReadyRuntimeSession(input.sessionId).client, input)
+    return this.runTracked(input.sessionId, 'resource', input.uri, (client, options) =>
+      discovery.readResource(client, input, options)
+    )
   }
 
   async getPrompt(input: DiscoveryGetPromptInput): Promise<DiscoveryOperationResult> {
-    return discovery.getPrompt(this.getReadyRuntimeSession(input.sessionId).client, input)
+    return this.runTracked(input.sessionId, 'prompt', input.name, (client, options) =>
+      discovery.getPrompt(client, input, options)
+    )
+  }
+
+  private async runTracked(
+    sessionId: string,
+    kind: InflightOperationKind,
+    label: string,
+    invoke: (
+      client: RuntimeSession['client'],
+      options: discovery.DiscoveryCallOptions
+    ) => Promise<DiscoveryOperationResult>
+  ): Promise<DiscoveryOperationResult> {
+    const runtime = this.getReadyRuntimeSession(sessionId)
+    const operationId = randomUUID()
+    const controller = new AbortController()
+
+    this.inflightStore.start({
+      operationId,
+      sessionId,
+      kind,
+      label,
+      controller
+    })
+
+    try {
+      return await invoke(runtime.client, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          this.inflightStore.recordProgress(operationId, progress)
+        }
+      })
+    } finally {
+      this.inflightStore.complete(operationId)
+    }
   }
 
   async notifyRootsChanged(profileId: string): Promise<void> {
@@ -395,6 +459,7 @@ export class SessionManager {
     this.recorder.clearPendingRequestTimes(sessionId)
     this.samplingStore.rejectBySession(sessionId, new Error(errorMessage))
     this.elicitationStore.rejectBySession(sessionId, new Error(errorMessage))
+    this.inflightStore.rejectBySession(sessionId, errorMessage)
   }
 }
 

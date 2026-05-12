@@ -1,4 +1,5 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type {
   DiscoveryCallToolInput,
   DiscoveryGetPromptInput,
@@ -6,8 +7,36 @@ import type {
   DiscoveryListResourcesResponse,
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
-  DiscoveryReadResourceInput
+  DiscoveryReadResourceInput,
+  InflightOperationProgress
 } from '../../../shared/ipc'
+
+export type DiscoveryProgressCallback = (progress: InflightOperationProgress) => void
+
+export type DiscoveryCallOptions = {
+  signal?: AbortSignal
+  onProgress?: DiscoveryProgressCallback
+}
+
+function buildRequestOptions(
+  options: DiscoveryCallOptions | undefined
+): RequestOptions | undefined {
+  if (!options) return undefined
+  const requestOptions: RequestOptions = {}
+  if (options.signal) requestOptions.signal = options.signal
+  if (options.onProgress) {
+    requestOptions.onprogress = (progress) => {
+      const projected: InflightOperationProgress = {
+        progress: progress.progress,
+        at: new Date().toISOString()
+      }
+      if (progress.total !== undefined) projected.total = progress.total
+      if (progress.message !== undefined) projected.message = progress.message
+      options.onProgress!(projected)
+    }
+  }
+  return requestOptions
+}
 
 async function runTimedOperation<T>(
   operation: () => Promise<T>
@@ -89,13 +118,14 @@ export async function listPrompts(client: Client): Promise<DiscoveryListPromptsR
 
 export async function callTool(
   client: Client,
-  input: DiscoveryCallToolInput
+  input: DiscoveryCallToolInput,
+  options?: DiscoveryCallOptions
 ): Promise<DiscoveryOperationResult> {
+  const requestOptions = buildRequestOptions(options)
   const { value, ms } = await runTimedOperation(() =>
-    client.callTool({
-      name: input.name,
-      arguments: input.arguments
-    })
+    requestOptions
+      ? client.callTool({ name: input.name, arguments: input.arguments }, undefined, requestOptions)
+      : client.callTool({ name: input.name, arguments: input.arguments })
   )
 
   return { result: value, latencyMs: ms }
@@ -103,21 +133,28 @@ export async function callTool(
 
 export async function readResource(
   client: Client,
-  input: DiscoveryReadResourceInput
+  input: DiscoveryReadResourceInput,
+  options?: DiscoveryCallOptions
 ): Promise<DiscoveryOperationResult> {
-  const { value, ms } = await runTimedOperation(() => client.readResource({ uri: input.uri }))
+  const requestOptions = buildRequestOptions(options)
+  const { value, ms } = await runTimedOperation(() =>
+    requestOptions
+      ? client.readResource({ uri: input.uri }, requestOptions)
+      : client.readResource({ uri: input.uri })
+  )
   return { result: value, latencyMs: ms }
 }
 
 export async function getPrompt(
   client: Client,
-  input: DiscoveryGetPromptInput
+  input: DiscoveryGetPromptInput,
+  options?: DiscoveryCallOptions
 ): Promise<DiscoveryOperationResult> {
+  const requestOptions = buildRequestOptions(options)
   const { value, ms } = await runTimedOperation(() =>
-    client.getPrompt({
-      name: input.name,
-      arguments: input.arguments
-    })
+    requestOptions
+      ? client.getPrompt({ name: input.name, arguments: input.arguments }, requestOptions)
+      : client.getPrompt({ name: input.name, arguments: input.arguments })
   )
   return { result: value, latencyMs: ms }
 }

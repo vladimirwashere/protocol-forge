@@ -34,6 +34,9 @@ export function installIpcFallback(): void {
     listPendingElicitations: () => Promise.resolve([]),
     respondElicitation: notAvailable,
     subscribeElicitations: () => () => {},
+    listInflightOperations: () => Promise.resolve([]),
+    cancelInflightOperation: notAvailable,
+    subscribeInflightOperations: () => () => {},
     checkForUpdates: () => Promise.resolve(),
     installUpdate: () => Promise.resolve(),
     subscribeUpdateStatus: () => () => {}

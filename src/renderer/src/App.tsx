@@ -6,12 +6,14 @@ import SectionErrorBoundary from './components/layout/SectionErrorBoundary'
 import StatusBar from './components/layout/StatusBar'
 import ToastViewport from './components/notifications/ToastViewport'
 import ElicitationModal from './components/elicitation/ElicitationModal'
+import InflightOperationsPanel from './components/inflight/InflightOperationsPanel'
 import SamplingPanel from './components/sampling/SamplingPanel'
 import ServerSidebar from './components/sidebar/ServerSidebar'
 import WorkspacePanel from './components/workspace/WorkspacePanel'
 import { useDiscoveryStore } from './stores/discovery-store'
 import { useMessageStore } from './stores/message-store'
 import { useElicitationStore } from './stores/elicitation-store'
+import { useInflightStore } from './stores/inflight-store'
 import { useSamplingStore } from './stores/sampling-store'
 import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
@@ -93,6 +95,11 @@ function App(): React.JSX.Element {
   const elicitationError = useElicitationStore((state) => state.error)
   const subscribeElicitations = useElicitationStore((state) => state.subscribe)
   const respondElicitation = useElicitationStore((state) => state.respond)
+
+  const inflightOperations = useInflightStore((state) => state.operations)
+  const inflightError = useInflightStore((state) => state.error)
+  const subscribeInflight = useInflightStore((state) => state.subscribe)
+  const cancelInflight = useInflightStore((state) => state.cancel)
 
   const sessionId = sessionStatus?.sessionId ?? null
   const lastDiscoverySessionKeyRef = useRef<string>('')
@@ -215,6 +222,10 @@ function App(): React.JSX.Element {
   }, [subscribeElicitations])
 
   useEffect(() => {
+    subscribeInflight()
+  }, [subscribeInflight])
+
+  useEffect(() => {
     if (lastUpdateStateRef.current === updateStatus.state) {
       return
     }
@@ -290,6 +301,11 @@ function App(): React.JSX.Element {
                 error={samplingError}
                 onRespond={respondSampling}
                 onReject={rejectSampling}
+              />
+              <InflightOperationsPanel
+                operations={inflightOperations}
+                error={inflightError}
+                onCancel={cancelInflight}
               />
               <DiscoveryPanel
                 sessionStatus={sessionStatus}

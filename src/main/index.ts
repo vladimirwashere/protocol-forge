@@ -17,6 +17,7 @@ import {
   type DiscoveryCallToolInput,
   type DiscoveryGetPromptInput,
   type ElicitationPendingRequest,
+  type InflightOperationSummary,
   type PingResponse,
   type SamplingPendingRequest,
   type SessionConnectInput,
@@ -43,6 +44,9 @@ import {
   elicitationListPendingSchema,
   elicitationRespondSchema,
   elicitationStreamSchema,
+  inflightCancelSchema,
+  inflightListSchema,
+  inflightStreamSchema,
   samplingListPendingSchema,
   samplingRejectSchema,
   samplingRespondSchema,
@@ -311,6 +315,22 @@ app.whenReady().then(() => {
     broadcastElicitationPending(sessionManager.listPendingElicitations())
   })
 
+  const inflightStreamSubscribers = new Set<number>()
+
+  const broadcastInflightOperations = (operations: InflightOperationSummary[]): void => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!inflightStreamSubscribers.has(window.webContents.id) || window.isDestroyed()) {
+        continue
+      }
+      window.webContents.send(IPC_CHANNELS.mcpInflightStream, operations)
+    }
+  }
+
+  sessionManager.onInflightChange(() => {
+    if (inflightStreamSubscribers.size === 0) return
+    broadcastInflightOperations(sessionManager.listInflightOperations())
+  })
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -468,6 +488,31 @@ app.whenReady().then(() => {
     return { ok: true as const }
   })
 
+  registerIpcHandler(IPC_CHANNELS.mcpInflightList, inflightListSchema, () =>
+    sessionManager.listInflightOperations()
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpInflightCancel, inflightCancelSchema, (input) =>
+    // Zod optional → `T | undefined`; IPC type uses `?:` only. Schema validates the shape.
+    sessionManager.cancelInflightOperation(
+      input as Parameters<typeof sessionManager.cancelInflightOperation>[0]
+    )
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpInflightStream, inflightStreamSchema, (input, event) => {
+    if (input.enabled) {
+      inflightStreamSubscribers.add(event.sender.id)
+    } else {
+      inflightStreamSubscribers.delete(event.sender.id)
+    }
+
+    event.sender.once('destroyed', () => {
+      inflightStreamSubscribers.delete(event.sender.id)
+    })
+
+    return { ok: true as const }
+  })
+
   registerIpcHandlerNoInput(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
   registerIpcHandlerNoInput(IPC_CHANNELS.appInstallUpdate, () => {
     quitAndInstall()
@@ -518,6 +563,9 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpElicitationListPending)
   ipcMain.removeHandler(IPC_CHANNELS.mcpElicitationRespond)
   ipcMain.removeHandler(IPC_CHANNELS.mcpElicitationStream)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpInflightList)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpInflightCancel)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpInflightStream)
   ipcMain.removeHandler(IPC_CHANNELS.appCheckForUpdates)
   ipcMain.removeHandler(IPC_CHANNELS.appInstallUpdate)
 })
