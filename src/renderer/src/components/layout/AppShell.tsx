@@ -166,9 +166,7 @@ function InspectorDrawer({
           </DrawerButton>
         </div>
       </header>
-      {!bodyHidden ? (
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
-      ) : null}
+      {!bodyHidden ? <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div> : null}
     </section>
   )
 }
@@ -250,7 +248,13 @@ function NarrowLayout({
 
 function ChevronDown(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
+    <svg
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className="h-3 w-3"
+    >
       <path d="M3 5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
@@ -258,7 +262,13 @@ function ChevronDown(): React.JSX.Element {
 
 function ChevronUp(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
+    <svg
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className="h-3 w-3"
+    >
       <path d="M3 7l3-3 3 3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
@@ -266,7 +276,13 @@ function ChevronUp(): React.JSX.Element {
 
 function SplitIcon(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
+    <svg
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className="h-3 w-3"
+    >
       <rect x="2" y="2" width="8" height="8" rx="1" />
       <path d="M2 6h8" strokeLinecap="round" />
     </svg>

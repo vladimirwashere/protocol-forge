@@ -21,7 +21,9 @@ function StatusBar({
         <span className="uppercase tracking-[0.08em] text-slate-500">Status</span>
         <span className="truncate">Connection: {connectionText}</span>
         <span className="truncate">Profiles: {profileCount}</span>
-        {sessionStatus ? <span className="truncate">Messages: {sessionStatus.messageCount}</span> : null}
+        {sessionStatus ? (
+          <span className="truncate">Messages: {sessionStatus.messageCount}</span>
+        ) : null}
         {sessionError ? <span className="truncate text-rose-400">{sessionError}</span> : null}
       </div>
       <div className="shrink-0 text-slate-500">⌘N New profile · ⌘, Settings</div>
