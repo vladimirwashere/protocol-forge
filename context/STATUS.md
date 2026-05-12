@@ -22,7 +22,7 @@
 **Phase 2 — M12 Client Capabilities.**
 
 - [x] M12.1 spec/SDK reconciliation against MCP 2025-11-25 + SDK 1.29 (findings in `context/DECISIONS.md` decision #13).
-- [ ] M12.2 advertise client capabilities (`sampling`, `elicitation` form+url, `roots.listChanged`) on `new Client(...)`.
+- [x] M12.2 advertise client capabilities (`sampling`, `elicitation` form+url, `roots.listChanged`) on `new Client(...)`.
 - [ ] M12.3 roots editor + `notifications/roots/list_changed` (file:// only).
 - [ ] M12.4 sampling response panel (developer-composed mock; no LLM backend).
 - [ ] M12.5 elicitation modal — form mode via `SchemaForm`, URL mode via `shell.openExternal`, three actions + completion notification.
@@ -30,11 +30,12 @@
 
 ## Current Task
 
-M12.2 — advertise client capabilities on `new Client(...)` per the M12.1 scope (sampling, elicitation form+url, roots.listChanged; no tasks, no sampling.tools, no sampling.context). Awaiting user go-ahead.
+M12.3 — per-profile roots editor with `notifications/roots/list_changed` (file:// URIs only).
 
 ## Completed This Session (Phase 2 — M12)
 
 - M12.1: reconciled MCP spec 2025-11-25 against `@modelcontextprotocol/sdk` 1.29.0. Recorded findings in `context/DECISIONS.md` (decision #13): advertise `sampling`, `elicitation` (`form` + `url`), `roots.listChanged`; defer the SDK's newer `tasks` capability (PLAN.md predates it — filed as backlog P7); skip `sampling.tools` (LLM backend is Phase 3) and `sampling.context` (soft-deprecated). Captured new spec surfaces to honor in later M12.x work: `URLElicitationRequiredError` (-32042), `notifications/elicitation/complete`, three-action elicitation response model, and `file://`-only roots. M12.6 cancellation will use `notifications/cancelled` (non-task path).
+- M12.2: added `src/main/mcp/client-capabilities.ts` (`CLIENT_CAPABILITIES = { sampling: {}, elicitation: { form: {}, url: {} }, roots: { listChanged: true } }`) and wired it into the `new Client(...)` call in `session-manager.ts` alongside the existing `enforceStrictCapabilities: true`. Added `tests/client-capabilities.test.ts` (3 tests) asserting the shape parses against the SDK's `ClientCapabilitiesSchema` and that deferred capabilities (`tasks`, `sampling.tools`, `sampling.context`) stay out. Full suite: 81 tests pass.
 
 ## Completed This Session (Phase 2 Kickoff)
 

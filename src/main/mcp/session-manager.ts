@@ -27,6 +27,7 @@ import {
   listSessionSummaries,
   updateSessionRecord
 } from '../persistence/sessionsRepo'
+import { CLIENT_CAPABILITIES } from './client-capabilities'
 import { createTracedTransport } from './transports/transport-factory'
 import { getStdioStderrTail } from './transports/stdio-transport'
 import type { RuntimeSession } from './session/state-machine'
@@ -98,7 +99,7 @@ export class SessionManager {
 
       const client = new Client(
         { name: APP_NAME, version: APP_VERSION },
-        { enforceStrictCapabilities: true }
+        { enforceStrictCapabilities: true, capabilities: CLIENT_CAPABILITIES }
       )
 
       const runtime: RuntimeSession = {
