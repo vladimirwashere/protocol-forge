@@ -1,10 +1,25 @@
 import { useMemo, useState } from 'react'
 
+import { validateAgainstOutputSchema } from './output-schema-validator'
+
 type ResultRendererProps = {
   title?: string | null
   result: unknown
   latencyMs?: number | null
+  outputSchema?: Record<string, unknown> | null
   onClear: () => void
+}
+
+type ViewMode = 'tree' | 'raw' | 'structured'
+
+const extractStructuredContent = (result: unknown): Record<string, unknown> | null => {
+  if (result === null || typeof result !== 'object') return null
+  const record = result as Record<string, unknown>
+  const structured = record.structuredContent
+  if (structured === null || typeof structured !== 'object' || Array.isArray(structured)) {
+    return null
+  }
+  return structured as Record<string, unknown>
 }
 
 function JsonNode({
@@ -63,10 +78,18 @@ function ResultRenderer({
   title,
   result,
   latencyMs,
+  outputSchema,
   onClear
 }: ResultRendererProps): React.JSX.Element {
-  const [isRawView, setIsRawView] = useState(false)
+  const structuredContent = useMemo(() => extractStructuredContent(result), [result])
+  const hasStructuredView = structuredContent !== null && outputSchema != null
+  const [viewMode, setViewMode] = useState<ViewMode>(hasStructuredView ? 'structured' : 'tree')
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
+
+  const validation = useMemo(() => {
+    if (!hasStructuredView) return null
+    return validateAgainstOutputSchema(outputSchema, structuredContent)
+  }, [hasStructuredView, outputSchema, structuredContent])
 
   const raw = useMemo(() => JSON.stringify(result, null, 2), [result])
 
@@ -95,14 +118,40 @@ function ResultRenderer({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setIsRawView((current) => !current)
-            }}
-            className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
-          >
-            {isRawView ? 'Tree' : 'Raw'}
-          </button>
+          <div className="inline-flex rounded border border-slate-700 p-0.5 text-[11px]">
+            {hasStructuredView ? (
+              <button
+                onClick={() => {
+                  setViewMode('structured')
+                }}
+                className={`rounded px-2 py-0.5 ${
+                  viewMode === 'structured' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                }`}
+              >
+                Structured
+              </button>
+            ) : null}
+            <button
+              onClick={() => {
+                setViewMode('tree')
+              }}
+              className={`rounded px-2 py-0.5 ${
+                viewMode === 'tree' ? 'bg-slate-700 text-white' : 'text-slate-400'
+              }`}
+            >
+              Tree
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('raw')
+              }}
+              className={`rounded px-2 py-0.5 ${
+                viewMode === 'raw' ? 'bg-slate-700 text-white' : 'text-slate-400'
+              }`}
+            >
+              Raw
+            </button>
+          </div>
           <button
             onClick={() => {
               void handleCopy()
@@ -120,13 +169,44 @@ function ResultRenderer({
         </div>
       </div>
 
-      {isRawView ? (
-        <pre className="max-h-56 overflow-auto text-xs text-slate-300">{raw}</pre>
-      ) : (
-        <div className="max-h-56 overflow-auto space-y-1">
+      {hasStructuredView && viewMode === 'structured' && validation ? (
+        <div className="space-y-2">
+          {validation.ok ? (
+            <div className="rounded border border-emerald-800 bg-emerald-950/30 px-2 py-1 text-[11px] text-emerald-300">
+              Structured content matches the tool&apos;s output schema.
+            </div>
+          ) : (
+            <div className="rounded border border-rose-800 bg-rose-950/30 px-2 py-1 text-[11px] text-rose-300">
+              <p className="font-semibold">
+                Structured content does not match the tool&apos;s output schema.
+              </p>
+              <ul className="mt-1 list-disc pl-4">
+                {validation.errors.map((err, index) => (
+                  <li key={index}>
+                    <span className="font-mono">{err.path}</span>: {err.message}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-slate-400">
+                Falls back to the raw <span className="font-mono">content</span> in the Tree view.
+              </p>
+            </div>
+          )}
+          <div className="max-h-56 space-y-1 overflow-auto">
+            <JsonNode value={structuredContent} depth={0} />
+          </div>
+        </div>
+      ) : null}
+
+      {viewMode === 'tree' ? (
+        <div className="max-h-56 space-y-1 overflow-auto">
           <JsonNode value={result} depth={0} />
         </div>
-      )}
+      ) : null}
+
+      {viewMode === 'raw' ? (
+        <pre className="max-h-56 overflow-auto text-xs text-slate-300">{raw}</pre>
+      ) : null}
     </div>
   )
 }

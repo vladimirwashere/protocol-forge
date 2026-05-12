@@ -16,6 +16,7 @@ type DiscoveryStoreState = {
   activeResult: unknown | null
   activeResultTitle: string | null
   activeResultLatencyMs: number | null
+  activeOutputSchema: Record<string, unknown> | null
   loading: boolean
   error: string | null
   setActiveTab: (tab: DiscoveryTab) => void
@@ -44,12 +45,13 @@ const isReadySession = (sessionStatus: SessionStatus | null): sessionStatus is S
   return sessionStatus !== null && sessionStatus.state === 'ready'
 }
 
-export const useDiscoveryStore = create<DiscoveryStoreState>((set) => ({
+export const useDiscoveryStore = create<DiscoveryStoreState>((set, get) => ({
   activeTab: 'tools',
   ...clearData,
   activeResult: null,
   activeResultTitle: null,
   activeResultLatencyMs: null,
+  activeOutputSchema: null,
   loading: false,
   error: null,
 
@@ -58,7 +60,12 @@ export const useDiscoveryStore = create<DiscoveryStoreState>((set) => ({
   },
 
   clearResult: () => {
-    set({ activeResult: null, activeResultTitle: null, activeResultLatencyMs: null })
+    set({
+      activeResult: null,
+      activeResultTitle: null,
+      activeResultLatencyMs: null,
+      activeOutputSchema: null
+    })
   },
 
   hydrateDiscovery: async (sessionStatus) => {
@@ -96,6 +103,8 @@ export const useDiscoveryStore = create<DiscoveryStoreState>((set) => ({
       return
     }
 
+    const tool = (get() as DiscoveryStoreState).tools.find((entry) => entry.name === name)
+
     set({ loading: true, error: null })
 
     try {
@@ -109,7 +118,8 @@ export const useDiscoveryStore = create<DiscoveryStoreState>((set) => ({
         loading: false,
         activeResult: response.result,
         activeResultTitle: `Tool result: ${name}`,
-        activeResultLatencyMs: response.latencyMs ?? null
+        activeResultLatencyMs: response.latencyMs ?? null,
+        activeOutputSchema: tool?.outputSchema ?? null
       })
     } catch (error) {
       set({
@@ -137,7 +147,8 @@ export const useDiscoveryStore = create<DiscoveryStoreState>((set) => ({
         loading: false,
         activeResult: response.result,
         activeResultTitle: `Resource: ${uri}`,
-        activeResultLatencyMs: response.latencyMs ?? null
+        activeResultLatencyMs: response.latencyMs ?? null,
+        activeOutputSchema: null
       })
     } catch (error) {
       set({
@@ -166,7 +177,8 @@ export const useDiscoveryStore = create<DiscoveryStoreState>((set) => ({
         loading: false,
         activeResult: response.result,
         activeResultTitle: `Prompt: ${name}`,
-        activeResultLatencyMs: response.latencyMs ?? null
+        activeResultLatencyMs: response.latencyMs ?? null,
+        activeOutputSchema: null
       })
     } catch (error) {
       set({

@@ -16,6 +16,7 @@ It is aimed at developers who build or integrate MCP servers and need reliable v
 | **Capability discovery** | List tools, resources, and prompts for the active session in a tabbed panel. |
 | **Tool annotations** | Server-supplied tool hints (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) render as badges. Tools marked destructive require explicit confirmation before invocation. Annotations are treated as untrusted hints — not security guarantees. |
 | **Schema-driven invocation** | Invoke tools and read resources/prompts through auto-generated forms derived from the server's JSON Schema. Results include structured output and round-trip latency. |
+| **Structured output validation** | Tool results carrying `structuredContent` are validated against the tool's declared `outputSchema`; pass/fail status surfaces above a typed view, with the raw `content` payload available as a fallback. |
 | **Protocol Inspector** | Stream live JSON-RPC traffic with direction/method/text filters, pause/resume, and per-message detail. |
 | **Session history** | All sessions and messages are persisted locally. Replay any historical session's protocol trace from the inspector. |
 | **Encrypted header storage** | `streamable-http` profile headers (auth tokens, API keys) are encrypted at rest via the OS keystore. |

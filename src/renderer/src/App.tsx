@@ -63,6 +63,7 @@ function App(): React.JSX.Element {
   const discoveryResult = useDiscoveryStore((state) => state.activeResult)
   const discoveryResultTitle = useDiscoveryStore((state) => state.activeResultTitle)
   const discoveryResultLatencyMs = useDiscoveryStore((state) => state.activeResultLatencyMs)
+  const discoveryOutputSchema = useDiscoveryStore((state) => state.activeOutputSchema)
   const setDiscoveryTab = useDiscoveryStore((state) => state.setActiveTab)
   const clearDiscoveryResult = useDiscoveryStore((state) => state.clearResult)
   const hydrateDiscovery = useDiscoveryStore((state) => state.hydrateDiscovery)
@@ -318,6 +319,7 @@ function App(): React.JSX.Element {
                 activeResult={discoveryResult}
                 activeResultTitle={discoveryResultTitle}
                 activeResultLatencyMs={discoveryResultLatencyMs}
+                activeOutputSchema={discoveryOutputSchema}
                 onChangeTab={setDiscoveryTab}
                 onReload={() => {
                   void hydrateDiscovery(sessionStatus)
