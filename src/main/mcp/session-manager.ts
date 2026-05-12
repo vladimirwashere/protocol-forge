@@ -27,6 +27,7 @@ import {
   listSessionSummaries,
   updateSessionRecord
 } from '../persistence/sessionsRepo'
+import { getServerProfile } from '../persistence/serverProfilesRepo'
 import { CLIENT_CAPABILITIES } from './client-capabilities'
 import { createTracedTransport } from './transports/transport-factory'
 import { getStdioStderrTail } from './transports/stdio-transport'
@@ -34,6 +35,7 @@ import type { RuntimeSession } from './session/state-machine'
 import { transitionSessionState } from './session/state-machine'
 import { MessageRecorder } from './session/tracing'
 import * as discovery from './session/discovery'
+import { notifyRootsChanged, registerRootsHandler } from './session/roots'
 import {
   buildStatusFromPersisted,
   buildStatusFromRuntime,
@@ -101,6 +103,11 @@ export class SessionManager {
         { name: APP_NAME, version: APP_VERSION },
         { enforceStrictCapabilities: true, capabilities: CLIENT_CAPABILITIES }
       )
+
+      registerRootsHandler(client, () => {
+        if (input.profileId === undefined) return []
+        return getServerProfile(input.profileId)?.roots ?? []
+      })
 
       const runtime: RuntimeSession = {
         id: sessionId,
@@ -235,6 +242,22 @@ export class SessionManager {
 
   async getPrompt(input: DiscoveryGetPromptInput): Promise<DiscoveryOperationResult> {
     return discovery.getPrompt(this.getReadyRuntimeSession(input.sessionId).client, input)
+  }
+
+  async notifyRootsChanged(profileId: string): Promise<void> {
+    const targets = [...this.sessions.values()].filter(
+      (runtime) => runtime.serverProfileId === profileId && runtime.state === 'ready'
+    )
+
+    await Promise.all(
+      targets.map(async (runtime) => {
+        try {
+          await notifyRootsChanged(runtime.client)
+        } catch (error) {
+          this.setSessionError(runtime.id, getErrorMessage(error))
+        }
+      })
+    )
   }
 
   private getReadyRuntimeSession(sessionId: string): RuntimeSession {

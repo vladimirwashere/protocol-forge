@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import type { ServerProfile, UpsertServerProfileInput } from '../../../shared/ipc'
+import type { ProfileRoot, ServerProfile, UpsertServerProfileInput } from '../../../shared/ipc'
 
-import { parseHttpHeadersRaw, parseStdioArgsRaw } from './server-store-utils'
+import { parseHttpHeadersRaw, parseRootsRaw, parseStdioArgsRaw } from './server-store-utils'
 
 export type ProfileTransport = 'stdio' | 'streamable-http'
 
@@ -13,6 +13,7 @@ export type ServerFormState = {
   cwd: string
   httpUrl: string
   httpHeadersRaw: string
+  rootsRaw: string
 }
 
 type ServerStoreState = {
@@ -24,6 +25,7 @@ type ServerStoreState = {
   refreshProfiles: () => Promise<void>
   saveProfile: () => Promise<void>
   deleteProfile: (id: string) => Promise<void>
+  updateProfileRoots: (profileId: string, rootsRaw: string) => Promise<void>
 }
 
 const defaultFormState = (): ServerFormState => ({
@@ -33,7 +35,8 @@ const defaultFormState = (): ServerFormState => ({
   argsRaw: '',
   cwd: '',
   httpUrl: '',
-  httpHeadersRaw: ''
+  httpHeadersRaw: '',
+  rootsRaw: ''
 })
 
 export const useServerStore = create<ServerStoreState>((set, get) => ({
@@ -71,6 +74,7 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
       const cwd = form.cwd.trim()
       const httpUrl = form.httpUrl.trim()
 
+      const roots = parseRootsRaw(form.rootsRaw)
       const payload: UpsertServerProfileInput =
         form.transport === 'stdio'
           ? {
@@ -78,13 +82,15 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
               transport: 'stdio',
               command,
               args,
-              cwd
+              cwd,
+              roots
             }
           : {
               name: form.name,
               transport: 'streamable-http',
               url: httpUrl,
-              headers: parseHttpHeadersRaw(form.httpHeadersRaw)
+              headers: parseHttpHeadersRaw(form.httpHeadersRaw),
+              roots
             }
 
       await window.api.upsertServerProfile(payload)
@@ -105,6 +111,35 @@ export const useServerStore = create<ServerStoreState>((set, get) => ({
 
   deleteProfile: async (id) => {
     await window.api.deleteServerProfile({ id })
+    await get().refreshProfiles()
+  },
+
+  updateProfileRoots: async (profileId, rootsRaw) => {
+    const profile = get().profiles.find((entry) => entry.id === profileId)
+    if (!profile) throw new Error('Profile not found')
+
+    const roots: ProfileRoot[] = parseRootsRaw(rootsRaw)
+    const payload: UpsertServerProfileInput =
+      profile.transport === 'stdio'
+        ? {
+            id: profile.id,
+            name: profile.name,
+            transport: 'stdio',
+            command: profile.command ?? '',
+            args: profile.args ?? [],
+            cwd: profile.cwd ?? '',
+            roots
+          }
+        : {
+            id: profile.id,
+            name: profile.name,
+            transport: 'streamable-http',
+            url: profile.url ?? '',
+            headers: profile.headers ?? {},
+            roots
+          }
+
+    await window.api.upsertServerProfile(payload)
     await get().refreshProfiles()
   }
 }))

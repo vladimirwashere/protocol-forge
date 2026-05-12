@@ -32,6 +32,11 @@ export type PingResponse = {
   at: string
 }
 
+export type ProfileRoot = {
+  uri: string
+  name?: string
+}
+
 export type ServerProfile = {
   id: string
   name: string
@@ -41,6 +46,7 @@ export type ServerProfile = {
   cwd?: string
   url?: string
   headers?: Record<string, string>
+  roots: ProfileRoot[]
   createdAt: string
   updatedAt: string
 }
@@ -53,6 +59,7 @@ export type UpsertServerProfileInput =
       command: string
       args: string[]
       cwd: string
+      roots?: ProfileRoot[]
     }
   | {
       id?: string
@@ -60,6 +67,7 @@ export type UpsertServerProfileInput =
       transport: 'streamable-http'
       url: string
       headers?: Record<string, string>
+      roots?: ProfileRoot[]
     }
 
 export type DeleteServerProfileInput = {

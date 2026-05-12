@@ -297,11 +297,15 @@ app.whenReady().then(() => {
 
   registerIpcHandlerNoInput(IPC_CHANNELS.serverProfilesList, () => listServerProfiles())
 
-  registerIpcHandler(IPC_CHANNELS.serverProfilesUpsert, upsertServerProfileSchema, (input) =>
+  registerIpcHandler(IPC_CHANNELS.serverProfilesUpsert, upsertServerProfileSchema, (input) => {
     // Zod's `.optional()` produces `T | undefined`; IPC types use `?:` without `| undefined`.
     // Cast is safe — the schema validates the runtime shape.
-    upsertServerProfile(input as UpsertServerProfileInput)
-  )
+    const profile = upsertServerProfile(input as UpsertServerProfileInput)
+    if (input.id !== undefined) {
+      void sessionManager.notifyRootsChanged(profile.id)
+    }
+    return profile
+  })
 
   registerIpcHandler(IPC_CHANNELS.serverProfilesDelete, deleteServerProfileSchema, (input) =>
     deleteServerProfile(input)

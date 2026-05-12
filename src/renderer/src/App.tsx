@@ -32,6 +32,7 @@ function App(): React.JSX.Element {
   const refreshProfiles = useServerStore((state) => state.refreshProfiles)
   const saveProfile = useServerStore((state) => state.saveProfile)
   const deleteProfile = useServerStore((state) => state.deleteProfile)
+  const updateProfileRoots = useServerStore((state) => state.updateProfileRoots)
 
   const sessionStatus = useSessionStore((state) => state.sessionStatus)
   const sessionMessages = useSessionStore((state) => state.sessionMessages)
@@ -248,6 +249,7 @@ function App(): React.JSX.Element {
               onConnectProfile={(profile) => {
                 void connectProfile(profile)
               }}
+              onUpdateRoots={updateProfileRoots}
             />
           </SectionErrorBoundary>
         }

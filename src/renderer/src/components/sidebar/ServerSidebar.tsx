@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { ServerProfile } from '../../../../shared/ipc'
 import type { ProfileTransport, ServerFormState } from '../../stores/server-store'
+import { stringifyRoots } from '../../stores/server-store-utils'
 
 type ServerSidebarProps = {
   form: ServerFormState
@@ -9,6 +11,79 @@ type ServerSidebarProps = {
   onSaveProfile: () => void
   onDeleteProfile: (id: string) => void
   onConnectProfile: (profile: ServerProfile) => void
+  onUpdateRoots: (profileId: string, rootsRaw: string) => Promise<void>
+}
+
+function RootsEditor({
+  profile,
+  onUpdateRoots
+}: {
+  profile: ServerProfile
+  onUpdateRoots: (profileId: string, rootsRaw: string) => Promise<void>
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(() => stringifyRoots(profile.roots))
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const onSave = async (): Promise<void> => {
+    setError(null)
+    setSaving(true)
+    try {
+      await onUpdateRoots(profile.id, draft)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update roots')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => {
+          setDraft(stringifyRoots(profile.roots))
+          setError(null)
+          setOpen(true)
+        }}
+        className="mt-2 ml-2 rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+      >
+        Roots ({profile.roots.length})
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-2 space-y-1">
+      <textarea
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        rows={3}
+        placeholder={'file:///path/to/workspace\nlabel|file:///path/with-name'}
+        className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs font-mono"
+      />
+      {error ? <p className="text-xs text-rose-400">{error}</p> : null}
+      <div className="flex gap-2">
+        <button
+          onClick={() => void onSave()}
+          disabled={saving}
+          className="rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-900 disabled:opacity-60"
+        >
+          {saving ? 'Saving…' : 'Save Roots'}
+        </button>
+        <button
+          onClick={() => {
+            setOpen(false)
+            setError(null)
+          }}
+          className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function ServerSidebar({
@@ -18,7 +93,8 @@ function ServerSidebar({
   setFormField,
   onSaveProfile,
   onDeleteProfile,
-  onConnectProfile
+  onConnectProfile,
+  onUpdateRoots
 }: ServerSidebarProps): React.JSX.Element {
   return (
     <>
@@ -78,6 +154,13 @@ function ServerSidebar({
             />
           </>
         )}
+        <textarea
+          value={form.rootsRaw}
+          onChange={(event) => setFormField('rootsRaw', event.target.value)}
+          placeholder={'Roots (optional, one file:// URI per line)\nfile:///path/to/workspace'}
+          rows={2}
+          className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
+        />
         <button
           onClick={onSaveProfile}
           className="w-full rounded bg-slate-200 px-2 py-1 text-sm font-medium text-slate-900"
@@ -118,6 +201,7 @@ function ServerSidebar({
               >
                 Connect
               </button>
+              <RootsEditor profile={profile} onUpdateRoots={onUpdateRoots} />
             </div>
           ))
         )}

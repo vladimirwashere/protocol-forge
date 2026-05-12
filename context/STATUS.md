@@ -23,19 +23,20 @@
 
 - [x] M12.1 spec/SDK reconciliation against MCP 2025-11-25 + SDK 1.29 (findings in `context/DECISIONS.md` decision #13).
 - [x] M12.2 advertise client capabilities (`sampling`, `elicitation` form+url, `roots.listChanged`) on `new Client(...)`.
-- [ ] M12.3 roots editor + `notifications/roots/list_changed` (file:// only).
+- [x] M12.3 roots editor + `notifications/roots/list_changed` (file:// only).
 - [ ] M12.4 sampling response panel (developer-composed mock; no LLM backend).
 - [ ] M12.5 elicitation modal — form mode via `SchemaForm`, URL mode via `shell.openExternal`, three actions + completion notification.
 - [ ] M12.6 progress + cancellation (`notifications/progress`, `notifications/cancelled`).
 
 ## Current Task
 
-M12.3 — per-profile roots editor with `notifications/roots/list_changed` (file:// URIs only).
+M12.4 — sampling response panel (developer-composed mock response; no LLM backend).
 
 ## Completed This Session (Phase 2 — M12)
 
 - M12.1: reconciled MCP spec 2025-11-25 against `@modelcontextprotocol/sdk` 1.29.0. Recorded findings in `context/DECISIONS.md` (decision #13): advertise `sampling`, `elicitation` (`form` + `url`), `roots.listChanged`; defer the SDK's newer `tasks` capability (PLAN.md predates it — filed as backlog P7); skip `sampling.tools` (LLM backend is Phase 3) and `sampling.context` (soft-deprecated). Captured new spec surfaces to honor in later M12.x work: `URLElicitationRequiredError` (-32042), `notifications/elicitation/complete`, three-action elicitation response model, and `file://`-only roots. M12.6 cancellation will use `notifications/cancelled` (non-task path).
 - M12.2: added `src/main/mcp/client-capabilities.ts` (`CLIENT_CAPABILITIES = { sampling: {}, elicitation: { form: {}, url: {} }, roots: { listChanged: true } }`) and wired it into the `new Client(...)` call in `session-manager.ts` alongside the existing `enforceStrictCapabilities: true`. Added `tests/client-capabilities.test.ts` (3 tests) asserting the shape parses against the SDK's `ClientCapabilitiesSchema` and that deferred capabilities (`tasks`, `sampling.tools`, `sampling.context`) stay out. Full suite: 81 tests pass.
+- M12.3: added per-profile workspace roots. Persistence: migration `0003_add_profile_roots` adds `roots_json` to `server_profiles`; repo round-trips a `roots: ProfileRoot[]` field on `ServerProfile`, rejects non-`file://` URIs at the trust boundary, and exposes a new `getServerProfile(id)` helper. IPC: extended `ServerProfile`/`UpsertServerProfileInput` (and matching Zod schemas) with optional `roots`. Session manager: new `src/main/mcp/session/roots.ts` registers a `ListRootsRequestSchema` handler on every `new Client(...)` that re-reads roots from the repo on each `roots/list` call, plus a `notifyRootsChanged(profileId)` SessionManager method that fires `client.sendRootsListChanged()` on every ready session bound to that profile. Renderer: server-store gained a `rootsRaw` form field and an `updateProfileRoots(id, raw)` action; sidebar shows roots count per profile with an inline editor (textarea, `file:///...` or `name|file:///...` per line, `file://` validated client-side). Tests: `tests/session-roots.test.ts` (handler returns latest roots on each call; notify forwards correctly), plus 3 new `serverProfilesRepo` tests and 6 new `server-store-utils` tests. Docs: `SECURITY.md` gained a "Client Capabilities Advertised to Servers" section noting the roots disclosure and `file://`-only constraint; `README.md` feature table gained a Workspace roots row. Full suite: 92 tests pass; `pnpm build` clean.
 
 ## Completed This Session (Phase 2 Kickoff)
 

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type {
   DeleteServerProfileInput,
+  ProfileRoot,
   ServerProfile,
   SessionTransport,
   UpsertServerProfileInput
@@ -18,8 +19,49 @@ type ServerProfileRow = {
   url: string | null
   headers_json: string | null
   headers_enc: Buffer | null
+  roots_json: string | null
   created_at: string
   updated_at: string
+}
+
+function readRoots(row: ServerProfileRow): ProfileRoot[] {
+  if (row.roots_json === null) return []
+  try {
+    const parsed = JSON.parse(row.roots_json) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.flatMap((entry): ProfileRoot[] => {
+      if (typeof entry !== 'object' || entry === null) return []
+      const candidate = entry as { uri?: unknown; name?: unknown }
+      if (typeof candidate.uri !== 'string') return []
+      const root: ProfileRoot = { uri: candidate.uri }
+      if (typeof candidate.name === 'string') root.name = candidate.name
+      return [root]
+    })
+  } catch {
+    return []
+  }
+}
+
+function isValidRootUri(uri: string): boolean {
+  if (!uri.startsWith('file://')) return false
+  try {
+    const parsed = new URL(uri)
+    return parsed.protocol === 'file:'
+  } catch {
+    return false
+  }
+}
+
+function normalizeRoots(input: ProfileRoot[] | undefined): ProfileRoot[] {
+  if (input === undefined) return []
+  return input.flatMap((root): ProfileRoot[] => {
+    const uri = root.uri.trim()
+    if (uri.length === 0) return []
+    const trimmedName = root.name?.trim()
+    const next: ProfileRoot = { uri }
+    if (trimmedName !== undefined && trimmedName.length > 0) next.name = trimmedName
+    return [next]
+  })
 }
 
 function readHeaders(row: ServerProfileRow): Record<string, string> {
@@ -39,6 +81,8 @@ function readHeaders(row: ServerProfileRow): Record<string, string> {
 }
 
 function toServerProfile(row: ServerProfileRow): ServerProfile {
+  const roots = readRoots(row)
+
   if (row.transport_type === 'streamable-http') {
     return {
       id: row.id,
@@ -46,6 +90,7 @@ function toServerProfile(row: ServerProfileRow): ServerProfile {
       transport: 'streamable-http',
       url: row.url ?? '',
       headers: readHeaders(row),
+      roots,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }
@@ -58,12 +103,14 @@ function toServerProfile(row: ServerProfileRow): ServerProfile {
     command: row.command,
     args: JSON.parse(row.args_json) as string[],
     ...(row.cwd.length > 0 ? { cwd: row.cwd } : {}),
+    roots,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
 }
 
 function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInput {
+  const roots = normalizeRoots(input.roots)
   const normalized: UpsertServerProfileInput =
     input.transport === 'stdio'
       ? {
@@ -71,7 +118,8 @@ function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInp
           transport: 'stdio',
           command: input.command.trim(),
           args: input.args.map((arg) => arg.trim()).filter((arg) => arg.length > 0),
-          cwd: input.cwd.trim()
+          cwd: input.cwd.trim(),
+          roots
         }
       : {
           name: input.name.trim(),
@@ -79,7 +127,8 @@ function normalizeInput(input: UpsertServerProfileInput): UpsertServerProfileInp
           url: input.url.trim(),
           headers: Object.fromEntries(
             Object.entries(input.headers ?? {}).map(([key, value]) => [key.trim(), value.trim()])
-          )
+          ),
+          roots
         }
 
   if (input.id !== undefined) {
@@ -97,6 +146,12 @@ function ensureValidInput(input: UpsertServerProfileInput): void {
 
   if (input.name.length === 0) {
     throw new Error('Server profile name is required')
+  }
+
+  for (const root of input.roots ?? []) {
+    if (!isValidRootUri(root.uri)) {
+      throw new Error(`Server profile root URI must be a valid file:// URL: ${root.uri}`)
+    }
   }
 
   if (input.transport === 'stdio') {
@@ -123,13 +178,29 @@ function ensureValidInput(input: UpsertServerProfileInput): void {
   }
 }
 
+export function getServerProfile(id: string): ServerProfile | undefined {
+  const db = getDatabase()
+  const row = db
+    .prepare(
+      `
+      SELECT id, name, command, args_json, cwd, created_at, updated_at
+      , transport_type, url, headers_json, headers_enc, roots_json
+      FROM server_profiles
+      WHERE id = ?
+      `
+    )
+    .get(id) as ServerProfileRow | undefined
+
+  return row ? toServerProfile(row) : undefined
+}
+
 export function listServerProfiles(): ServerProfile[] {
   const db = getDatabase()
   const rows = db
     .prepare(
       `
       SELECT id, name, command, args_json, cwd, created_at, updated_at
-      , transport_type, url, headers_json, headers_enc
+      , transport_type, url, headers_json, headers_enc, roots_json
       FROM server_profiles
       ORDER BY updated_at DESC
       `
@@ -159,6 +230,8 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
     headersPlain !== null && encryptionAvailable ? encryptString(headersPlain) : null
   const headersJson = headersPlain !== null && !encryptionAvailable ? headersPlain : null
 
+  const rootsJson = JSON.stringify(input.roots ?? [])
+
   db.prepare(
     `
     INSERT INTO server_profiles (
@@ -171,6 +244,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
       url,
       headers_json,
       headers_enc,
+      roots_json,
       created_at,
       updated_at
     )
@@ -184,6 +258,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
       @url,
       @headersJson,
       @headersEnc,
+      @rootsJson,
       @createdAt,
       @updatedAt
     )
@@ -196,6 +271,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
       url = excluded.url,
       headers_json = excluded.headers_json,
       headers_enc = excluded.headers_enc,
+      roots_json = excluded.roots_json,
       updated_at = excluded.updated_at
     `
   ).run({
@@ -208,6 +284,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
     url: input.transport === 'stdio' ? null : input.url,
     headersJson,
     headersEnc,
+    rootsJson,
     createdAt,
     updatedAt: now
   })
@@ -216,7 +293,7 @@ export function upsertServerProfile(rawInput: UpsertServerProfileInput): ServerP
     .prepare(
       `
       SELECT id, name, command, args_json, cwd, created_at, updated_at
-      , transport_type, url, headers_json, headers_enc
+      , transport_type, url, headers_json, headers_enc, roots_json
       FROM server_profiles
       WHERE id = ?
       `

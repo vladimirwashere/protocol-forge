@@ -18,6 +18,20 @@ Protocol Forge enforces the standard Electron trust boundaries documented in
   equivalents); user-supplied env entries in the profile are layered on
   top of that allowlist.
 
+## Client Capabilities Advertised to Servers
+
+Protocol Forge advertises a fixed, audited set of MCP client capabilities
+on every connection: `sampling`, `elicitation` (`form` + `url` modes),
+and `roots` with `listChanged`. The deferred capabilities (`tasks`,
+`sampling.tools`, `sampling.context`) are intentionally not advertised.
+
+**Roots disclosure.** A connected server may call `roots/list` and
+receive back the `file://` URIs the user has configured on the active
+session's profile. Only `file://` URIs are accepted at the trust
+boundary (rejected at the renderer, the IPC schema, and the persistence
+repo). Roots are user-curated per profile and the server only sees the
+roots associated with the profile that authorized the session.
+
 ## Data at Rest
 
 Protocol Forge persists state in a local SQLite database

@@ -25,13 +25,19 @@ const envRecord = z.record(z.string(), z.string())
 const promptArgsRecord = z.record(z.string(), z.string())
 const unknownArgsRecord = z.record(z.string(), z.unknown())
 
+const profileRootSchema = z.object({
+  uri: z.string(),
+  name: z.string().optional()
+})
+
 const stdioProfileSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   transport: z.literal('stdio'),
   command: z.string(),
   args: z.array(z.string()),
-  cwd: z.string()
+  cwd: z.string(),
+  roots: z.array(profileRootSchema).optional()
 })
 
 const streamableHttpProfileSchema = z.object({
@@ -39,7 +45,8 @@ const streamableHttpProfileSchema = z.object({
   name: z.string(),
   transport: z.literal('streamable-http'),
   url: z.string(),
-  headers: headersRecord.optional()
+  headers: headersRecord.optional(),
+  roots: z.array(profileRootSchema).optional()
 })
 
 export const upsertServerProfileSchema = z.discriminatedUnion('transport', [

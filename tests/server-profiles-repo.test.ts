@@ -10,6 +10,7 @@ type ProfileRow = {
   url: string | null
   headers_json: string | null
   headers_enc: Buffer | null
+  roots_json: string | null
   created_at: string
   updated_at: string
 }
@@ -77,6 +78,7 @@ vi.mock('../src/main/persistence/database', () => ({
                 url: params.url as string | null,
                 headers_json: params.headersJson as string | null,
                 headers_enc: (params.headersEnc as Buffer | null) ?? null,
+                roots_json: (params.rootsJson as string | null) ?? null,
                 created_at: params.createdAt as string,
                 updated_at: params.updatedAt as string
               }
@@ -185,6 +187,59 @@ describe('serverProfilesRepo', () => {
         url: 'not-a-url'
       })
     ).toThrow(/URL must be valid/)
+  })
+
+  it('persists and round-trips file:// roots', () => {
+    const saved = upsertServerProfile({
+      name: 'With Roots',
+      transport: 'stdio',
+      command: 'node',
+      args: [],
+      cwd: '',
+      roots: [{ uri: 'file:///workspace/repo', name: 'repo' }, { uri: 'file:///tmp/scratch' }]
+    })
+
+    expect(saved.roots).toEqual([
+      { uri: 'file:///workspace/repo', name: 'repo' },
+      { uri: 'file:///tmp/scratch' }
+    ])
+    expect(state.rows[0].roots_json).toBe(
+      JSON.stringify([
+        { uri: 'file:///workspace/repo', name: 'repo' },
+        { uri: 'file:///tmp/scratch' }
+      ])
+    )
+
+    const reread = listServerProfiles()[0]
+    expect(reread.roots).toEqual([
+      { uri: 'file:///workspace/repo', name: 'repo' },
+      { uri: 'file:///tmp/scratch' }
+    ])
+  })
+
+  it('rejects non-file:// roots', () => {
+    expect(() =>
+      upsertServerProfile({
+        name: 'Bad Roots',
+        transport: 'stdio',
+        command: 'node',
+        args: [],
+        cwd: '',
+        roots: [{ uri: 'https://example.com/repo' }]
+      })
+    ).toThrow(/file:\/\//)
+  })
+
+  it('defaults to empty roots when omitted', () => {
+    const saved = upsertServerProfile({
+      name: 'No Roots',
+      transport: 'stdio',
+      command: 'node',
+      args: [],
+      cwd: ''
+    })
+
+    expect(saved.roots).toEqual([])
   })
 
   it('deletes a profile by id', () => {

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   parseHttpHeadersRaw,
-  parseStdioArgsRaw
+  parseRootsRaw,
+  parseStdioArgsRaw,
+  stringifyRoots
 } from '../src/renderer/src/stores/server-store-utils'
 
 describe('parseHttpHeadersRaw', () => {
@@ -34,5 +36,41 @@ describe('parseStdioArgsRaw', () => {
       'args:',
       '@modelcontextprotocol/server-everything'
     ])
+  })
+})
+
+describe('parseRootsRaw', () => {
+  it('parses one file:// URI per line', () => {
+    expect(parseRootsRaw('file:///a\nfile:///b')).toEqual([
+      { uri: 'file:///a' },
+      { uri: 'file:///b' }
+    ])
+  })
+
+  it('parses optional name|uri syntax', () => {
+    expect(parseRootsRaw('workspace|file:///workspace\nfile:///tmp')).toEqual([
+      { uri: 'file:///workspace', name: 'workspace' },
+      { uri: 'file:///tmp' }
+    ])
+  })
+
+  it('skips blank lines', () => {
+    expect(parseRootsRaw('\nfile:///a\n\n')).toEqual([{ uri: 'file:///a' }])
+  })
+
+  it('rejects non-file:// schemes', () => {
+    expect(() => parseRootsRaw('https://example.com')).toThrow(/file:\/\//)
+    expect(() => parseRootsRaw('file:///ok\nhttp://x')).toThrow(/line 2/)
+  })
+
+  it('rejects malformed file URIs', () => {
+    expect(() => parseRootsRaw('file:not-a-url')).toThrow(/file:\/\//)
+  })
+})
+
+describe('stringifyRoots', () => {
+  it('round-trips with parseRootsRaw', () => {
+    const roots = [{ uri: 'file:///workspace', name: 'workspace' }, { uri: 'file:///tmp' }]
+    expect(parseRootsRaw(stringifyRoots(roots))).toEqual(roots)
   })
 })
