@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type {
   DiscoveryPrompt,
@@ -36,43 +36,132 @@ type DiscoveryPanelProps = {
   onClearResult: () => void
 }
 
-const parseKeyValueLines = (raw: string): Record<string, string> => {
-  const result: Record<string, string> = {}
-
-  for (const [index, line] of raw.split(/\r?\n/).entries()) {
-    const trimmed = line.trim()
-    if (trimmed.length === 0) {
-      continue
-    }
-
-    const separatorIndex = trimmed.indexOf('=')
-    if (separatorIndex <= 0) {
-      throw new Error(`Invalid prompt argument on line ${index + 1}. Use key=value.`)
-    }
-
-    const key = trimmed.slice(0, separatorIndex).trim()
-    const value = trimmed.slice(separatorIndex + 1).trim()
-
-    if (key.length === 0) {
-      throw new Error(`Invalid prompt argument key on line ${index + 1}`)
-    }
-
-    result[key] = value
-  }
-
-  return result
+function PromptArgumentField({
+  argument,
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+  suggestions,
+  showSuggestions,
+  loading
+}: {
+  argument: DiscoveryPrompt['arguments'] extends Array<infer T> | undefined ? T : never
+  value: string
+  onChange: (next: string) => void
+  onFocus: () => void
+  onBlur: () => void
+  suggestions: string[] | null
+  showSuggestions: boolean
+  loading: boolean
+}): React.JSX.Element {
+  return (
+    <label className="block text-xs text-slate-300">
+      <span className="font-mono text-[11px] text-slate-400">
+        {argument.name}
+        {argument.required ? <span className="ml-1 text-rose-400">*</span> : null}
+      </span>
+      <div className="relative mt-1">
+        <input
+          type="text"
+          value={value}
+          required={argument.required ?? false}
+          onChange={(event) => {
+            onChange(event.target.value)
+          }}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder={argument.description ?? ''}
+          className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200"
+        />
+        {showSuggestions && suggestions && suggestions.length > 0 ? (
+          <ul className="absolute left-0 right-0 top-full z-10 mt-1 max-h-32 overflow-auto rounded border border-slate-700 bg-slate-900 text-xs shadow-lg">
+            {suggestions.map((suggestion) => (
+              <li key={suggestion}>
+                <button
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    onChange(suggestion)
+                  }}
+                  className="block w-full px-2 py-1 text-left text-slate-200 hover:bg-slate-800"
+                >
+                  {suggestion}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {loading ? (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">
+            …
+          </span>
+        ) : null}
+      </div>
+    </label>
+  )
 }
 
 function PromptArgsEditor({
   prompt,
   disabled,
+  sessionId,
+  completionsAvailable,
   onSubmit
 }: {
   prompt: DiscoveryPrompt
   disabled: boolean
+  sessionId: string | null
+  completionsAvailable: boolean
   onSubmit: (args: Record<string, string>) => void
 }): React.JSX.Element {
-  const hasArgs = (prompt.arguments?.length ?? 0) > 0
+  const promptArgs = prompt.arguments ?? []
+  const hasArgs = promptArgs.length > 0
+
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [focused, setFocused] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({})
+  const [loadingField, setLoadingField] = useState<string | null>(null)
+  const requestSeq = useRef(0)
+
+  const canComplete = completionsAvailable && sessionId !== null
+
+  useEffect(() => {
+    if (!canComplete || focused === null) return
+    const argumentName = focused
+    const argumentValue = values[argumentName] ?? ''
+
+    const requestId = ++requestSeq.current
+    const timer = window.setTimeout(() => {
+      setLoadingField(argumentName)
+      const otherArgs = Object.fromEntries(
+        Object.entries(values).filter(([key, val]) => key !== argumentName && val.length > 0)
+      )
+      window.api
+        .complete({
+          sessionId: sessionId!,
+          ref: { type: 'ref/prompt', name: prompt.name },
+          argument: { name: argumentName, value: argumentValue },
+          ...(Object.keys(otherArgs).length > 0 ? { context: { arguments: otherArgs } } : {})
+        })
+        .then((result) => {
+          if (requestId !== requestSeq.current) return
+          setSuggestions((prev) => ({ ...prev, [argumentName]: result.values }))
+        })
+        .catch(() => {
+          if (requestId !== requestSeq.current) return
+          setSuggestions((prev) => ({ ...prev, [argumentName]: [] }))
+        })
+        .finally(() => {
+          if (requestId !== requestSeq.current) return
+          setLoadingField(null)
+        })
+    }, 200)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [canComplete, focused, prompt.name, sessionId, values])
 
   if (!hasArgs) {
     return (
@@ -94,17 +183,36 @@ function PromptArgsEditor({
       className="space-y-2"
       onSubmit={(event) => {
         event.preventDefault()
-        const formData = new FormData(event.currentTarget)
-        const raw = String(formData.get('promptArgs') ?? '')
-        onSubmit(parseKeyValueLines(raw))
+        const filled: Record<string, string> = {}
+        for (const argument of promptArgs) {
+          const val = values[argument.name] ?? ''
+          if (val.length > 0) filled[argument.name] = val
+        }
+        onSubmit(filled)
       }}
     >
-      <textarea
-        name="promptArgs"
-        rows={3}
-        placeholder={prompt.arguments?.map((argument) => `${argument.name}=...`).join('\n')}
-        className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200"
-      />
+      {promptArgs.map((argument) => (
+        <PromptArgumentField
+          key={argument.name}
+          argument={argument}
+          value={values[argument.name] ?? ''}
+          onChange={(next) => {
+            setValues((prev) => ({ ...prev, [argument.name]: next }))
+          }}
+          onFocus={() => {
+            setFocused(argument.name)
+          }}
+          onBlur={() => {
+            // Slight delay so click on a suggestion fires before the list closes.
+            window.setTimeout(() => {
+              setFocused((current) => (current === argument.name ? null : current))
+            }, 100)
+          }}
+          suggestions={suggestions[argument.name] ?? null}
+          showSuggestions={canComplete && focused === argument.name}
+          loading={loadingField === argument.name}
+        />
+      ))}
       <button
         type="submit"
         disabled={disabled}
@@ -136,6 +244,8 @@ function DiscoveryPanel({
   onClearResult
 }: DiscoveryPanelProps): React.JSX.Element {
   const isReady = sessionStatus?.state === 'ready'
+  const sessionId = sessionStatus?.sessionId ?? null
+  const completionsAvailable = sessionStatus?.serverCapabilities?.completions === true
   const [pendingDestructive, setPendingDestructive] = useState<PendingDestructiveInvocation | null>(
     null
   )
@@ -272,6 +382,8 @@ function DiscoveryPanel({
                   <PromptArgsEditor
                     prompt={prompt}
                     disabled={loading}
+                    sessionId={sessionId}
+                    completionsAvailable={completionsAvailable}
                     onSubmit={(args) => {
                       onGetPrompt(prompt.name, args)
                     }}

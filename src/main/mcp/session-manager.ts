@@ -5,6 +5,8 @@ import { APP_NAME, APP_VERSION } from '../../shared/constants'
 import { AppError, getErrorMessage } from '../../shared/errors'
 import type {
   DiscoveryCallToolInput,
+  DiscoveryCompleteInput,
+  DiscoveryCompleteResult,
   DiscoveryGetPromptInput,
   DiscoveryListPromptsResponse,
   DiscoveryListResourcesResponse,
@@ -361,6 +363,18 @@ export class SessionManager {
     return this.runTracked(input.sessionId, 'prompt', input.name, (client, options) =>
       discovery.getPrompt(client, input, options)
     )
+  }
+
+  async complete(input: DiscoveryCompleteInput): Promise<DiscoveryCompleteResult> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+    const caps = runtime.client.getServerCapabilities() as { completions?: unknown } | undefined
+    if (!caps || caps.completions === undefined) {
+      throw new AppError(
+        'COMPLETIONS_NOT_SUPPORTED',
+        `Session ${input.sessionId} server does not advertise completions capability`
+      )
+    }
+    return discovery.complete(runtime.client, input)
   }
 
   private async runTracked(

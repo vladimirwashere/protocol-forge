@@ -2,6 +2,8 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type {
   DiscoveryCallToolInput,
+  DiscoveryCompleteInput,
+  DiscoveryCompleteResult,
   DiscoveryGetPromptInput,
   DiscoveryListPromptsResponse,
   DiscoveryListResourcesResponse,
@@ -181,6 +183,29 @@ export async function readResource(
       : client.readResource({ uri: input.uri })
   )
   return { result: value, latencyMs: ms }
+}
+
+export async function complete(
+  client: Client,
+  input: DiscoveryCompleteInput
+): Promise<DiscoveryCompleteResult> {
+  const params: Parameters<Client['complete']>[0] = {
+    ref: input.ref,
+    argument: input.argument
+  }
+  if (input.context !== undefined) {
+    const context: { arguments?: Record<string, string> } = {}
+    if (input.context.arguments !== undefined) context.arguments = input.context.arguments
+    params.context = context
+  }
+
+  const response = await client.complete(params)
+  const { values, total, hasMore } = response.completion
+
+  const projected: DiscoveryCompleteResult = { values }
+  if (typeof total === 'number') projected.total = total
+  if (typeof hasMore === 'boolean') projected.hasMore = hasMore
+  return projected
 }
 
 export async function getPrompt(

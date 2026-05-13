@@ -15,6 +15,7 @@ import {
   IPC_CHANNELS,
   type AppMeta,
   type DiscoveryCallToolInput,
+  type DiscoveryCompleteInput,
   type DiscoveryGetPromptInput,
   type ElicitationPendingRequest,
   type InflightOperationSummary,
@@ -38,6 +39,7 @@ import { registerIpcHandler, registerIpcHandlerNoInput } from './ipc/register'
 import {
   deleteServerProfileSchema,
   discoveryCallToolSchema,
+  discoveryCompleteSchema,
   discoveryGetPromptSchema,
   discoveryReadResourceSchema,
   discoverySessionSchema,
@@ -436,6 +438,10 @@ app.whenReady().then(() => {
     sessionManager.getPrompt(input as DiscoveryGetPromptInput)
   )
 
+  registerIpcHandler(IPC_CHANNELS.mcpDiscoveryComplete, discoveryCompleteSchema, (input) =>
+    sessionManager.complete(input as DiscoveryCompleteInput)
+  )
+
   registerIpcHandler(IPC_CHANNELS.mcpSamplingListPending, samplingListPendingSchema, () =>
     sessionManager.listPendingSampling()
   )
@@ -556,6 +562,7 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryCallTool)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryReadResource)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryGetPrompt)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryComplete)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingListPending)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingRespond)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingReject)

@@ -1,4 +1,9 @@
-import type { SessionState, SessionStatus, SessionSummary } from '../../../shared/ipc'
+import type {
+  SessionServerCapabilities,
+  SessionState,
+  SessionStatus,
+  SessionSummary
+} from '../../../shared/ipc'
 import type {
   SessionRecord,
   SessionStatsRecord,
@@ -15,6 +20,27 @@ export function getDurationMs(connectedAt: string, disconnectedAt?: string): num
   }
 
   return Math.max(0, endedAt - startedAt)
+}
+
+function projectServerCapabilities(runtime: RuntimeSession): SessionServerCapabilities | undefined {
+  // Capabilities are only meaningful after the initialize handshake; before then the SDK
+  // returns undefined and the renderer should not gate anything on a half-known shape.
+  let caps: Record<string, unknown> | undefined
+  try {
+    caps = runtime.client.getServerCapabilities() as Record<string, unknown> | undefined
+  } catch {
+    return undefined
+  }
+  if (!caps) return undefined
+
+  const resources = (caps.resources ?? {}) as Record<string, unknown>
+
+  return {
+    completions: caps.completions !== undefined,
+    resourceSubscribe: resources.subscribe === true,
+    resourceListChanged: resources.listChanged === true,
+    logging: caps.logging !== undefined
+  }
 }
 
 export function buildStatusFromRuntime(
@@ -35,6 +61,9 @@ export function buildStatusFromRuntime(
 
   if (runtime.disconnectedAt !== undefined) status.disconnectedAt = runtime.disconnectedAt
   if (runtime.error !== undefined) status.error = runtime.error
+
+  const serverCapabilities = projectServerCapabilities(runtime)
+  if (serverCapabilities) status.serverCapabilities = serverCapabilities
 
   return status
 }

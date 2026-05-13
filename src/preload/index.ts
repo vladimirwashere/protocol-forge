@@ -32,6 +32,7 @@ const api: AppApi = {
   callTool: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryCallTool, input),
   readResource: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryReadResource, input),
   getPrompt: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryGetPrompt, input),
+  complete: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryComplete, input),
   listPendingSampling: () => ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingListPending),
   respondSampling: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingRespond, input),
   rejectSampling: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSamplingReject, input),

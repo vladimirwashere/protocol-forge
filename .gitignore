@@ -6,3 +6,4 @@ out
 *.log*
 CLAUDE.md
 .github/copilot-instructions.md
+.claude/

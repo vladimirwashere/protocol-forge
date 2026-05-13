@@ -16,6 +16,7 @@ export const IPC_CHANNELS = {
   mcpDiscoveryCallTool: 'mcp-discovery:call-tool',
   mcpDiscoveryReadResource: 'mcp-discovery:read-resource',
   mcpDiscoveryGetPrompt: 'mcp-discovery:get-prompt',
+  mcpDiscoveryComplete: 'mcp-discovery:complete',
   mcpSamplingListPending: 'mcp-sampling:list-pending',
   mcpSamplingRespond: 'mcp-sampling:respond',
   mcpSamplingReject: 'mcp-sampling:reject',
@@ -127,6 +128,13 @@ export type SessionDisconnectInput = {
   sessionId: string
 }
 
+export type SessionServerCapabilities = {
+  completions: boolean
+  resourceSubscribe: boolean
+  resourceListChanged: boolean
+  logging: boolean
+}
+
 export type SessionStatus = {
   sessionId: string
   state: SessionState
@@ -140,6 +148,7 @@ export type SessionStatus = {
   errorCount: number
   avgLatencyMs?: number
   durationMs?: number
+  serverCapabilities?: SessionServerCapabilities
 }
 
 export type SessionStatusInput = {
@@ -270,6 +279,28 @@ export type DiscoveryOperationResult = {
   latencyMs?: number
 }
 
+export type DiscoveryCompletionRef =
+  | { type: 'ref/prompt'; name: string }
+  | { type: 'ref/resource'; uri: string }
+
+export type DiscoveryCompleteInput = {
+  sessionId: string
+  ref: DiscoveryCompletionRef
+  argument: {
+    name: string
+    value: string
+  }
+  context?: {
+    arguments?: Record<string, string>
+  }
+}
+
+export type DiscoveryCompleteResult = {
+  values: string[]
+  total?: number
+  hasMore?: boolean
+}
+
 export type SamplingPendingRequest = {
   requestId: string
   sessionId: string
@@ -394,6 +425,7 @@ export type AppApi = {
   callTool: (input: DiscoveryCallToolInput) => Promise<DiscoveryOperationResult>
   readResource: (input: DiscoveryReadResourceInput) => Promise<DiscoveryOperationResult>
   getPrompt: (input: DiscoveryGetPromptInput) => Promise<DiscoveryOperationResult>
+  complete: (input: DiscoveryCompleteInput) => Promise<DiscoveryCompleteResult>
   listPendingSampling: () => Promise<SamplingPendingRequest[]>
   respondSampling: (input: SamplingRespondInput) => Promise<{ ok: true }>
   rejectSampling: (input: SamplingRejectInput) => Promise<{ ok: true }>

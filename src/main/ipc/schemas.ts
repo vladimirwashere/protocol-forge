@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type {
   DeleteServerProfileInput,
   DiscoveryCallToolInput,
+  DiscoveryCompleteInput,
   DiscoveryGetPromptInput,
   DiscoveryReadResourceInput,
   DiscoverySessionInput,
@@ -150,6 +151,26 @@ export const discoveryGetPromptSchema = z.object({
   arguments: promptArgsRecord.optional()
 })
 assertEquals<Equals<z.infer<typeof discoveryGetPromptSchema>, DiscoveryGetPromptInput>>()
+
+const discoveryCompletionRefSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ref/prompt'), name: z.string() }),
+  z.object({ type: z.literal('ref/resource'), uri: z.string() })
+])
+
+export const discoveryCompleteSchema = z.object({
+  sessionId: z.string(),
+  ref: discoveryCompletionRefSchema,
+  argument: z.object({
+    name: z.string(),
+    value: z.string()
+  }),
+  context: z
+    .object({
+      arguments: promptArgsRecord.optional()
+    })
+    .optional()
+})
+assertEquals<Equals<z.infer<typeof discoveryCompleteSchema>, DiscoveryCompleteInput>>()
 
 // `.default({})` lets the renderer invoke without an argument (an undefined input becomes {}).
 export const samplingListPendingSchema = z.object({}).strict().default({})
