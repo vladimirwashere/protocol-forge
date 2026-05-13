@@ -69,12 +69,6 @@
       "picomatch": "^4.0.4",
       "flatted": "^3.4.2",
       "ip-address": "10.1.1"
-    },
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "electron",
-      "electron-winstaller",
-      "esbuild"
-    ]
+    }
   }
 }
