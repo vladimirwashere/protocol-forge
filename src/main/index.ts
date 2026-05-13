@@ -42,6 +42,8 @@ import {
   discoveryCompleteSchema,
   discoveryGetPromptSchema,
   discoveryReadResourceSchema,
+  discoveryResourceSubscriptionSchema,
+  discoveryResourceUpdatedStreamSchema,
   discoverySessionSchema,
   elicitationListPendingSchema,
   elicitationRespondSchema,
@@ -333,6 +335,18 @@ app.whenReady().then(() => {
     broadcastInflightOperations(sessionManager.listInflightOperations())
   })
 
+  const resourceUpdatedStreamSubscribers = new Set<number>()
+
+  sessionManager.onResourceUpdate((update) => {
+    if (resourceUpdatedStreamSubscribers.size === 0) return
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!resourceUpdatedStreamSubscribers.has(window.webContents.id) || window.isDestroyed()) {
+        continue
+      }
+      window.webContents.send(IPC_CHANNELS.mcpDiscoveryResourceUpdatedStream, update)
+    }
+  })
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -446,6 +460,31 @@ app.whenReady().then(() => {
 
   registerIpcHandler(IPC_CHANNELS.mcpDiscoveryComplete, discoveryCompleteSchema, (input) =>
     sessionManager.complete(input as DiscoveryCompleteInput)
+  )
+
+  registerIpcHandler(
+    IPC_CHANNELS.mcpDiscoverySubscribeResource,
+    discoveryResourceSubscriptionSchema,
+    (input) => sessionManager.subscribeResource(input)
+  )
+
+  registerIpcHandler(
+    IPC_CHANNELS.mcpDiscoveryUnsubscribeResource,
+    discoveryResourceSubscriptionSchema,
+    (input) => sessionManager.unsubscribeResource(input)
+  )
+
+  registerIpcHandler(
+    IPC_CHANNELS.mcpDiscoveryResourceUpdatedStream,
+    discoveryResourceUpdatedStreamSchema,
+    (input, event) => {
+      if (input.enabled) {
+        resourceUpdatedStreamSubscribers.add(event.sender.id)
+      } else {
+        resourceUpdatedStreamSubscribers.delete(event.sender.id)
+      }
+      return { ok: true } as const
+    }
   )
 
   registerIpcHandler(IPC_CHANNELS.mcpSamplingListPending, samplingListPendingSchema, () =>
@@ -570,6 +609,9 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryReadResource)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryGetPrompt)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryComplete)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoverySubscribeResource)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryUnsubscribeResource)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryResourceUpdatedStream)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingListPending)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingRespond)
   ipcMain.removeHandler(IPC_CHANNELS.mcpSamplingReject)

@@ -18,6 +18,9 @@ export const IPC_CHANNELS = {
   mcpDiscoveryReadResource: 'mcp-discovery:read-resource',
   mcpDiscoveryGetPrompt: 'mcp-discovery:get-prompt',
   mcpDiscoveryComplete: 'mcp-discovery:complete',
+  mcpDiscoverySubscribeResource: 'mcp-discovery:subscribe-resource',
+  mcpDiscoveryUnsubscribeResource: 'mcp-discovery:unsubscribe-resource',
+  mcpDiscoveryResourceUpdatedStream: 'mcp-discovery:resource-updated-stream',
   mcpSamplingListPending: 'mcp-sampling:list-pending',
   mcpSamplingRespond: 'mcp-sampling:respond',
   mcpSamplingReject: 'mcp-sampling:reject',
@@ -315,6 +318,23 @@ export type DiscoveryCompleteResult = {
   hasMore?: boolean
 }
 
+export type DiscoveryResourceSubscriptionInput = {
+  sessionId: string
+  uri: string
+}
+
+export type DiscoveryResourceUpdate = {
+  sessionId: string
+  uri: string
+  at: string
+}
+
+export type DiscoveryResourceUpdateListener = (update: DiscoveryResourceUpdate) => void
+
+export type DiscoveryResourceUpdatedStreamInput = {
+  enabled: boolean
+}
+
 export type SamplingPendingRequest = {
   requestId: string
   sessionId: string
@@ -443,6 +463,9 @@ export type AppApi = {
   readResource: (input: DiscoveryReadResourceInput) => Promise<DiscoveryOperationResult>
   getPrompt: (input: DiscoveryGetPromptInput) => Promise<DiscoveryOperationResult>
   complete: (input: DiscoveryCompleteInput) => Promise<DiscoveryCompleteResult>
+  subscribeResource: (input: DiscoveryResourceSubscriptionInput) => Promise<{ ok: true }>
+  unsubscribeResource: (input: DiscoveryResourceSubscriptionInput) => Promise<{ ok: true }>
+  subscribeResourceUpdates: (listener: DiscoveryResourceUpdateListener) => () => void
   listPendingSampling: () => Promise<SamplingPendingRequest[]>
   respondSampling: (input: SamplingRespondInput) => Promise<{ ok: true }>
   rejectSampling: (input: SamplingRejectInput) => Promise<{ ok: true }>

@@ -236,6 +236,14 @@ export async function complete(
   return projected
 }
 
+export async function subscribeResource(client: Client, uri: string): Promise<void> {
+  await client.subscribeResource({ uri })
+}
+
+export async function unsubscribeResource(client: Client, uri: string): Promise<void> {
+  await client.unsubscribeResource({ uri })
+}
+
 export async function getPrompt(
   client: Client,
   input: DiscoveryGetPromptInput,

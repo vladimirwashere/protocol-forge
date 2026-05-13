@@ -11,6 +11,7 @@ import SamplingPanel from './components/sampling/SamplingPanel'
 import ServerSidebar from './components/sidebar/ServerSidebar'
 import WorkspacePanel from './components/workspace/WorkspacePanel'
 import { useDiscoveryStore } from './stores/discovery-store'
+import { useResourceSubscriptionsStore } from './stores/resource-subscriptions-store'
 import { useMessageStore } from './stores/message-store'
 import { useElicitationStore } from './stores/elicitation-store'
 import { useInflightStore } from './stores/inflight-store'
@@ -103,11 +104,21 @@ function App(): React.JSX.Element {
   const subscribeInflight = useInflightStore((state) => state.subscribe)
   const cancelInflight = useInflightStore((state) => state.cancel)
 
+  const resourceSubscriptionsBySession = useResourceSubscriptionsStore((state) => state.bySession)
+  const resourceSubscriptionsError = useResourceSubscriptionsStore((state) => state.error)
+  const subscribeResource = useResourceSubscriptionsStore((state) => state.subscribe)
+  const unsubscribeResource = useResourceSubscriptionsStore((state) => state.unsubscribe)
+  const markResourceUpdated = useResourceSubscriptionsStore((state) => state.markUpdated)
+  const clearResourceSubscriptionsForSession = useResourceSubscriptionsStore(
+    (state) => state.clearSession
+  )
+
   const sessionId = sessionStatus?.sessionId ?? null
   const lastDiscoverySessionKeyRef = useRef<string>('')
   const lastSaveErrorRef = useRef<string | null>(null)
   const lastSessionErrorRef = useRef<string | null>(null)
   const lastDiscoveryErrorRef = useRef<string | null>(null)
+  const lastResourceSubscriptionErrorRef = useRef<string | null>(null)
   const lastUpdateStateRef = useRef<string>('idle')
 
   useEffect(() => {
@@ -212,6 +223,21 @@ function App(): React.JSX.Element {
   }, [discoveryError, showToast])
 
   useEffect(() => {
+    if (
+      !resourceSubscriptionsError ||
+      lastResourceSubscriptionErrorRef.current === resourceSubscriptionsError
+    ) {
+      return
+    }
+    lastResourceSubscriptionErrorRef.current = resourceSubscriptionsError
+    showToast({
+      title: 'Subscription Error',
+      message: resourceSubscriptionsError,
+      kind: 'error'
+    })
+  }, [resourceSubscriptionsError, showToast])
+
+  useEffect(() => {
     subscribeUpdate()
   }, [subscribeUpdate])
 
@@ -226,6 +252,27 @@ function App(): React.JSX.Element {
   useEffect(() => {
     subscribeInflight()
   }, [subscribeInflight])
+
+  useEffect(() => {
+    const unsubscribe = window.api.subscribeResourceUpdates((update) => {
+      markResourceUpdated(update.sessionId, update.uri, update.at)
+      // Auto-refetch the resource only if the user is viewing it; otherwise the badge +
+      // timestamp on the list entry is enough and we don't yank the panel out from under them.
+      const session = useSessionStore.getState().sessionStatus
+      const activeTitle = useDiscoveryStore.getState().activeResultTitle
+      if (session?.sessionId !== update.sessionId) return
+      if (activeTitle !== `Resource: ${update.uri}`) return
+      void useDiscoveryStore.getState().loadResource(session, update.uri)
+    })
+    return unsubscribe
+  }, [markResourceUpdated])
+
+  useEffect(() => {
+    if (!sessionId) return
+    return () => {
+      clearResourceSubscriptionsForSession(sessionId)
+    }
+  }, [sessionId, clearResourceSubscriptionsForSession])
 
   useEffect(() => {
     if (lastUpdateStateRef.current === updateStatus.state) {
@@ -336,6 +383,17 @@ function App(): React.JSX.Element {
                   void loadPrompt(sessionStatus, name, args)
                 }}
                 onClearResult={clearDiscoveryResult}
+                resourceSubscriptions={
+                  sessionId ? (resourceSubscriptionsBySession[sessionId] ?? {}) : {}
+                }
+                onSubscribeResource={(uri) => {
+                  if (!sessionId) return
+                  void subscribeResource(sessionId, uri)
+                }}
+                onUnsubscribeResource={(uri) => {
+                  if (!sessionId) return
+                  void unsubscribeResource(sessionId, uri)
+                }}
               />
             </div>
           </SectionErrorBoundary>

@@ -10,6 +10,7 @@ export type AppErrorCode =
   | 'ELICITATION_URL_NOT_AVAILABLE'
   | 'INFLIGHT_OPERATION_NOT_FOUND'
   | 'COMPLETIONS_NOT_SUPPORTED'
+  | 'RESOURCE_SUBSCRIBE_NOT_SUPPORTED'
 
 export class AppError extends Error {
   readonly code: AppErrorCode

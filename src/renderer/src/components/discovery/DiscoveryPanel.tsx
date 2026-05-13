@@ -36,6 +36,9 @@ type DiscoveryPanelProps = {
   onReadResource: (uri: string) => void
   onGetPrompt: (name: string, args: Record<string, string>) => void
   onClearResult: () => void
+  resourceSubscriptions: Record<string, { pending: boolean; lastUpdateAt: string | null }>
+  onSubscribeResource: (uri: string) => void
+  onUnsubscribeResource: (uri: string) => void
 }
 
 function PromptArgumentField({
@@ -392,11 +395,15 @@ function DiscoveryPanel({
   onInvokeTool,
   onReadResource,
   onGetPrompt,
-  onClearResult
+  onClearResult,
+  resourceSubscriptions,
+  onSubscribeResource,
+  onUnsubscribeResource
 }: DiscoveryPanelProps): React.JSX.Element {
   const isReady = sessionStatus?.state === 'ready'
   const sessionId = sessionStatus?.sessionId ?? null
   const completionsAvailable = sessionStatus?.serverCapabilities?.completions === true
+  const subscribeAvailable = sessionStatus?.serverCapabilities?.resourceSubscribe === true
   const [pendingDestructive, setPendingDestructive] = useState<PendingDestructiveInvocation | null>(
     null
   )
@@ -498,23 +505,64 @@ function DiscoveryPanel({
             {resources.length === 0 ? (
               <p className="text-xs text-slate-500">No resources reported by this server.</p>
             ) : (
-              resources.map((resource) => (
-                <div
-                  key={resource.uri}
-                  className="rounded border border-slate-800 bg-slate-900/40 p-2"
-                >
-                  <p className="text-xs font-medium text-slate-200">{resource.name}</p>
-                  <p className="mt-1 break-all text-[11px] text-slate-500">{resource.uri}</p>
-                  <button
-                    className="mt-2 rounded border border-slate-700 px-2 py-1 text-xs text-slate-200"
-                    onClick={() => {
-                      onReadResource(resource.uri)
-                    }}
+              resources.map((resource) => {
+                const subscription = resourceSubscriptions[resource.uri]
+                const isSubscribed = subscription !== undefined
+                return (
+                  <div
+                    key={resource.uri}
+                    className="rounded border border-slate-800 bg-slate-900/40 p-2"
                   >
-                    Read Resource
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium text-slate-200">{resource.name}</p>
+                      {isSubscribed ? (
+                        <span
+                          className="rounded bg-emerald-900/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-emerald-300"
+                          title={
+                            subscription.lastUpdateAt
+                              ? `Last update ${subscription.lastUpdateAt}`
+                              : 'Subscribed (no updates yet)'
+                          }
+                        >
+                          Live
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 break-all text-[11px] text-slate-500">{resource.uri}</p>
+                    {isSubscribed && subscription.lastUpdateAt ? (
+                      <p className="mt-1 text-[10px] text-emerald-400">
+                        Updated {subscription.lastUpdateAt}
+                      </p>
+                    ) : null}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200"
+                        onClick={() => {
+                          onReadResource(resource.uri)
+                        }}
+                      >
+                        Read Resource
+                      </button>
+                      {subscribeAvailable ? (
+                        <button
+                          type="button"
+                          disabled={subscription?.pending === true}
+                          className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 disabled:opacity-60"
+                          onClick={() => {
+                            if (isSubscribed) {
+                              onUnsubscribeResource(resource.uri)
+                            } else {
+                              onSubscribeResource(resource.uri)
+                            }
+                          }}
+                        >
+                          {isSubscribed ? 'Unsubscribe' : 'Subscribe'}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })
             )}
           </section>
 

@@ -35,6 +35,7 @@ Key modules:
 - `mcp/session/sampling.ts`: in-memory pending-request store and `CreateMessageRequestSchema` handler registration; pending entries scoped by session id and drained on disconnect/error.
 - `mcp/session/elicitation.ts`: in-memory pending-request store, `ElicitRequestSchema` handler, and `ElicitationCompleteNotificationSchema` handler for URL-mode completion. URL-mode `accept` actions route through a `SessionManager`-injected `shell.openExternal` opener; non-accept actions and form mode never touch the shell.
 - `mcp/session/inflight.ts`: in-memory store of running tool/resource/prompt invocations keyed by generated `operationId`, each entry carrying an `AbortController`. `SessionManager.runTracked` allocates an entry per discovery call, forwards `signal` + `onprogress` into the SDK's `RequestOptions`, removes the entry in `finally`, and exposes a `cancelInflightOperation` method that calls `controller.abort()` (the SDK then auto-emits `notifications/cancelled` on the wire).
+- `mcp/session/resource-subscriptions.ts`: in-memory `ResourceSubscriptionsStore` (Set keyed by `${sessionId}::${uri}`) tracking which resources each session has actively subscribed to, plus a `ResourceUpdatedNotificationSchema` handler that filters incoming `notifications/resources/updated` against the current subscription state before fanning out — late events arriving after the user unsubscribes are dropped. `SessionManager.subscribeResource`/`unsubscribeResource` gate on `serverCapabilities.resources.subscribe` (throwing `RESOURCE_SUBSCRIBE_NOT_SUPPORTED`), use `try/finally` so local tracking always clears on unsubscribe, and drain the store via `removeBySession` on disconnect/shutdown/error.
 - `mcp/session/status.ts`: projects `SessionStatus` from runtime/persisted state. Defensively reads `Client.getServerCapabilities()` and emits a typed `serverCapabilities` bag (`completions`, `resourceSubscribe`, `resourceListChanged`, `logging`) so the renderer can gate feature affordances on what the server advertised at initialize.
 - `mcp/session/discovery.ts`: pure functions over the MCP `Client` for tools/resources/resource-templates/prompts plus `complete()` (forwards `completion/complete` requests, projects `total`/`hasMore`). Resource templates are projected defensively — entries without string `uriTemplate`/`name` are dropped, wrong-typed optionals are stripped, icons reuse the same projector as tools. `SessionManager.complete` gates the call on the server's `completions` capability and throws `COMPLETIONS_NOT_SUPPORTED` if absent.
 - `mcp/transports/*`: concrete `stdio` and `streamable-http` transport adapters (each wrapped by a shared `TracingTransport`) plus factory selection.
@@ -103,7 +104,15 @@ Responsibilities:
 4. When the call resolves or rejects, the entry is removed in `finally`. If the renderer calls `cancelInflightOperation`, the store aborts the controller — the SDK raises `AbortError` from the pending `request()` and emits `notifications/cancelled` on the transport so the server can stop work.
 5. Inflight entries scoped to a session are drained (with their controllers aborted) on disconnect, shutdown, or session error.
 
-### 7. Protocol inspector stream
+### 7. Resource subscriptions
+
+1. Renderer toggles a subscription on a resource entry via `subscribeResource` / `unsubscribeResource`. Both IPC handlers gate on the runtime session's advertised `serverCapabilities.resources.subscribe` and throw `RESOURCE_SUBSCRIBE_NOT_SUPPORTED` otherwise.
+2. `SessionManager` forwards to the SDK (`Client.subscribeResource` / `unsubscribeResource`) and mirrors the result into `ResourceSubscriptionsStore` so the main process knows what each session is actively watching. Unsubscribe uses `try/finally` to drop local tracking even if the server errors.
+3. The store's `ResourceUpdatedNotificationSchema` handler filters incoming `notifications/resources/updated` against the current subscription set before broadcasting `{ sessionId, uri, at }` to renderer subscribers — late events after unsubscribe are dropped.
+4. Renderer's `useResourceSubscriptionsStore` (Zustand) tracks `{ pending, lastUpdateAt }` per `(sessionId, uri)`. Incoming updates refresh `lastUpdateAt` only when the URI is still in the map; `App.tsx` auto-refetches the resource only when the user is actively viewing it (`activeResultTitle === Resource: ${uri}`).
+5. Subscriptions are session-scoped: drained from both stores on disconnect/shutdown/error in main and cleared from the renderer store on sessionId change.
+
+### 8. Protocol inspector stream
 
 1. Session manager emits captured protocol messages.
 2. Main batches messages (100ms / 50-message flush) and pushes to subscribed renderers.

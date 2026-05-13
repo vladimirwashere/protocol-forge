@@ -5,6 +5,8 @@ import type {
   DiscoveryCompleteInput,
   DiscoveryGetPromptInput,
   DiscoveryReadResourceInput,
+  DiscoveryResourceSubscriptionInput,
+  DiscoveryResourceUpdatedStreamInput,
   DiscoverySessionInput,
   ElicitationListPendingInput,
   ElicitationRespondInput,
@@ -171,6 +173,21 @@ export const discoveryCompleteSchema = z.object({
     .optional()
 })
 assertEquals<Equals<z.infer<typeof discoveryCompleteSchema>, DiscoveryCompleteInput>>()
+
+export const discoveryResourceSubscriptionSchema = z.object({
+  sessionId: z.string(),
+  uri: z.string()
+})
+assertEquals<
+  Equals<z.infer<typeof discoveryResourceSubscriptionSchema>, DiscoveryResourceSubscriptionInput>
+>()
+
+export const discoveryResourceUpdatedStreamSchema = z.object({
+  enabled: z.boolean()
+})
+assertEquals<
+  Equals<z.infer<typeof discoveryResourceUpdatedStreamSchema>, DiscoveryResourceUpdatedStreamInput>
+>()
 
 // `.default({})` lets the renderer invoke without an argument (an undefined input becomes {}).
 export const samplingListPendingSchema = z.object({}).strict().default({})

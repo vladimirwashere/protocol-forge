@@ -14,6 +14,8 @@ import type {
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
   DiscoveryReadResourceInput,
+  DiscoveryResourceSubscriptionInput,
+  DiscoveryResourceUpdate,
   ElicitationPendingRequest,
   ElicitationRespondInput,
   InflightCancelInput,
@@ -50,6 +52,10 @@ import { PendingSamplingStore, registerSamplingHandler } from './session/samplin
 import { PendingElicitationStore, registerElicitationHandler } from './session/elicitation'
 import { InflightOperationsStore, type InflightOperationKind } from './session/inflight'
 import {
+  ResourceSubscriptionsStore,
+  registerResourceUpdatedHandler
+} from './session/resource-subscriptions'
+import {
   buildStatusFromPersisted,
   buildStatusFromRuntime,
   mapSessionSummary
@@ -66,6 +72,7 @@ export class SessionManager {
   private readonly samplingStore = new PendingSamplingStore()
   private readonly elicitationStore = new PendingElicitationStore()
   private readonly inflightStore = new InflightOperationsStore()
+  private readonly resourceSubscriptions = new ResourceSubscriptionsStore()
   private externalUrlOpener: ExternalUrlOpener = async () => {
     // Default no-op so unit tests don't need Electron's shell module.
   }
@@ -218,6 +225,7 @@ export class SessionManager {
 
       registerSamplingHandler(client, sessionId, this.samplingStore, () => randomUUID())
       registerElicitationHandler(client, sessionId, this.elicitationStore, () => randomUUID())
+      registerResourceUpdatedHandler(client, sessionId, this.resourceSubscriptions)
 
       const runtime: RuntimeSession = {
         id: sessionId,
@@ -274,6 +282,7 @@ export class SessionManager {
       this.samplingStore.rejectBySession(runtime.id, new Error('Session disconnected'))
       this.elicitationStore.rejectBySession(runtime.id, new Error('Session disconnected'))
       this.inflightStore.rejectBySession(runtime.id, 'Session disconnected')
+      this.resourceSubscriptions.removeBySession(runtime.id)
 
       return { ok: true }
     } catch (error) {
@@ -297,6 +306,7 @@ export class SessionManager {
           this.samplingStore.rejectBySession(session.id, new Error('Session disconnected'))
           this.elicitationStore.rejectBySession(session.id, new Error('Session disconnected'))
           this.inflightStore.rejectBySession(session.id, 'Session disconnected')
+          this.resourceSubscriptions.removeBySession(session.id)
         } catch (error) {
           this.setSessionError(session.id, getErrorMessage(error))
         }
@@ -368,6 +378,47 @@ export class SessionManager {
     return this.runTracked(input.sessionId, 'prompt', input.name, (client, options) =>
       discovery.getPrompt(client, input, options)
     )
+  }
+
+  onResourceUpdate(listener: (update: DiscoveryResourceUpdate) => void): () => void {
+    return this.resourceSubscriptions.onUpdate(listener)
+  }
+
+  async subscribeResource(input: DiscoveryResourceSubscriptionInput): Promise<{ ok: true }> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+    const caps = runtime.client.getServerCapabilities() as
+      | { resources?: { subscribe?: boolean } }
+      | undefined
+    if (caps?.resources?.subscribe !== true) {
+      throw new AppError(
+        'RESOURCE_SUBSCRIBE_NOT_SUPPORTED',
+        `Session ${input.sessionId} server does not advertise the resources.subscribe capability`
+      )
+    }
+    await discovery.subscribeResource(runtime.client, input.uri)
+    this.resourceSubscriptions.add(input.sessionId, input.uri)
+    return { ok: true }
+  }
+
+  async unsubscribeResource(input: DiscoveryResourceSubscriptionInput): Promise<{ ok: true }> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+    const caps = runtime.client.getServerCapabilities() as
+      | { resources?: { subscribe?: boolean } }
+      | undefined
+    if (caps?.resources?.subscribe !== true) {
+      throw new AppError(
+        'RESOURCE_SUBSCRIBE_NOT_SUPPORTED',
+        `Session ${input.sessionId} server does not advertise the resources.subscribe capability`
+      )
+    }
+    // Best-effort unsubscribe: even if the server errors, drop our local tracking so the
+    // renderer reflects the user's intent and stops auto-refetching.
+    try {
+      await discovery.unsubscribeResource(runtime.client, input.uri)
+    } finally {
+      this.resourceSubscriptions.remove(input.sessionId, input.uri)
+    }
+    return { ok: true }
   }
 
   async complete(input: DiscoveryCompleteInput): Promise<DiscoveryCompleteResult> {
@@ -479,6 +530,7 @@ export class SessionManager {
     this.samplingStore.rejectBySession(sessionId, new Error(errorMessage))
     this.elicitationStore.rejectBySession(sessionId, new Error(errorMessage))
     this.inflightStore.rejectBySession(sessionId, errorMessage)
+    this.resourceSubscriptions.removeBySession(sessionId)
   }
 }
 
