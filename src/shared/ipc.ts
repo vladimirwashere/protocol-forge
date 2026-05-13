@@ -31,6 +31,8 @@ export const IPC_CHANNELS = {
   mcpInflightList: 'mcp-inflight:list',
   mcpInflightCancel: 'mcp-inflight:cancel',
   mcpInflightStream: 'mcp-inflight:stream',
+  mcpLoggingSetLevel: 'mcp-logging:set-level',
+  mcpLoggingStream: 'mcp-logging:stream',
   appCheckForUpdates: 'app:check-for-updates',
   appInstallUpdate: 'app:install-update',
   appUpdateStatusStream: 'app:update-status-stream'
@@ -427,6 +429,38 @@ export type InflightStreamInput = {
 
 export type InflightOperationsListener = (operations: InflightOperationSummary[]) => void
 
+export const LOG_LEVELS = [
+  'debug',
+  'info',
+  'notice',
+  'warning',
+  'error',
+  'critical',
+  'alert',
+  'emergency'
+] as const
+
+export type LogLevel = (typeof LOG_LEVELS)[number]
+
+export type LogNotification = {
+  sessionId: string
+  level: LogLevel
+  logger?: string
+  data: unknown
+  at: string
+}
+
+export type LoggingSetLevelInput = {
+  sessionId: string
+  level: LogLevel
+}
+
+export type LoggingStreamInput = {
+  enabled: boolean
+}
+
+export type LogNotificationListener = (notification: LogNotification) => void
+
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
@@ -476,4 +510,6 @@ export type AppApi = {
   listInflightOperations: () => Promise<InflightOperationSummary[]>
   cancelInflightOperation: (input: InflightCancelInput) => Promise<{ ok: true }>
   subscribeInflightOperations: (listener: InflightOperationsListener) => () => void
+  setLoggingLevel: (input: LoggingSetLevelInput) => Promise<{ ok: true }>
+  subscribeLogNotifications: (listener: LogNotificationListener) => () => void
 }

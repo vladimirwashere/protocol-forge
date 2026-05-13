@@ -19,6 +19,7 @@ import {
   type DiscoveryGetPromptInput,
   type ElicitationPendingRequest,
   type InflightOperationSummary,
+  type LogNotification,
   type PingResponse,
   type SamplingPendingRequest,
   type SessionConnectInput,
@@ -51,6 +52,8 @@ import {
   inflightCancelSchema,
   inflightListSchema,
   inflightStreamSchema,
+  loggingSetLevelSchema,
+  loggingStreamSchema,
   samplingListPendingSchema,
   samplingRejectSchema,
   samplingRespondSchema,
@@ -335,6 +338,22 @@ app.whenReady().then(() => {
     broadcastInflightOperations(sessionManager.listInflightOperations())
   })
 
+  const loggingStreamSubscribers = new Set<number>()
+
+  const broadcastLogNotification = (notification: LogNotification): void => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!loggingStreamSubscribers.has(window.webContents.id) || window.isDestroyed()) {
+        continue
+      }
+      window.webContents.send(IPC_CHANNELS.mcpLoggingStream, notification)
+    }
+  }
+
+  sessionManager.onLogNotification((notification) => {
+    if (loggingStreamSubscribers.size === 0) return
+    broadcastLogNotification(notification)
+  })
+
   const resourceUpdatedStreamSubscribers = new Set<number>()
 
   sessionManager.onResourceUpdate((update) => {
@@ -564,6 +583,24 @@ app.whenReady().then(() => {
     return { ok: true as const }
   })
 
+  registerIpcHandler(IPC_CHANNELS.mcpLoggingSetLevel, loggingSetLevelSchema, (input) =>
+    sessionManager.setLoggingLevel(input)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.mcpLoggingStream, loggingStreamSchema, (input, event) => {
+    if (input.enabled) {
+      loggingStreamSubscribers.add(event.sender.id)
+    } else {
+      loggingStreamSubscribers.delete(event.sender.id)
+    }
+
+    event.sender.once('destroyed', () => {
+      loggingStreamSubscribers.delete(event.sender.id)
+    })
+
+    return { ok: true as const }
+  })
+
   registerIpcHandlerNoInput(IPC_CHANNELS.appCheckForUpdates, () => checkForUpdates())
   registerIpcHandlerNoInput(IPC_CHANNELS.appInstallUpdate, () => {
     quitAndInstall()
@@ -622,6 +659,8 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpInflightList)
   ipcMain.removeHandler(IPC_CHANNELS.mcpInflightCancel)
   ipcMain.removeHandler(IPC_CHANNELS.mcpInflightStream)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpLoggingSetLevel)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpLoggingStream)
   ipcMain.removeHandler(IPC_CHANNELS.appCheckForUpdates)
   ipcMain.removeHandler(IPC_CHANNELS.appInstallUpdate)
 })

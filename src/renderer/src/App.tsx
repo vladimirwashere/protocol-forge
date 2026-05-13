@@ -15,6 +15,7 @@ import { useResourceSubscriptionsStore } from './stores/resource-subscriptions-s
 import { useMessageStore } from './stores/message-store'
 import { useElicitationStore } from './stores/elicitation-store'
 import { useInflightStore } from './stores/inflight-store'
+import { useLoggingStore } from './stores/logging-store'
 import { useSamplingStore } from './stores/sampling-store'
 import { useServerStore } from './stores/server-store'
 import { useSessionStore } from './stores/session-store'
@@ -103,6 +104,9 @@ function App(): React.JSX.Element {
   const inflightError = useInflightStore((state) => state.error)
   const subscribeInflight = useInflightStore((state) => state.subscribe)
   const cancelInflight = useInflightStore((state) => state.cancel)
+
+  const subscribeLogging = useLoggingStore((state) => state.subscribe)
+  const setLoggingActiveSession = useLoggingStore((state) => state.setActiveSession)
 
   const resourceSubscriptionsBySession = useResourceSubscriptionsStore((state) => state.bySession)
   const resourceSubscriptionsError = useResourceSubscriptionsStore((state) => state.error)
@@ -252,6 +256,14 @@ function App(): React.JSX.Element {
   useEffect(() => {
     subscribeInflight()
   }, [subscribeInflight])
+
+  useEffect(() => {
+    return subscribeLogging()
+  }, [subscribeLogging])
+
+  useEffect(() => {
+    setLoggingActiveSession(sessionId)
+  }, [sessionId, setLoggingActiveSession])
 
   useEffect(() => {
     const unsubscribe = window.api.subscribeResourceUpdates((update) => {

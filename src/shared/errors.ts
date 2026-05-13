@@ -11,6 +11,7 @@ export type AppErrorCode =
   | 'INFLIGHT_OPERATION_NOT_FOUND'
   | 'COMPLETIONS_NOT_SUPPORTED'
   | 'RESOURCE_SUBSCRIBE_NOT_SUPPORTED'
+  | 'LOGGING_NOT_SUPPORTED'
 
 export class AppError extends Error {
   readonly code: AppErrorCode

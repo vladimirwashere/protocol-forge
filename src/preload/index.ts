@@ -98,6 +98,20 @@ const api: AppApi = {
       void ipcRenderer.invoke(IPC_CHANNELS.mcpInflightStream, { enabled: false })
     }
   },
+  setLoggingLevel: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpLoggingSetLevel, input),
+  subscribeLogNotifications: (listener) => {
+    const handler = (_event: unknown, notification: Parameters<typeof listener>[0]): void => {
+      listener(notification)
+    }
+
+    ipcRenderer.on(IPC_CHANNELS.mcpLoggingStream, handler)
+    void ipcRenderer.invoke(IPC_CHANNELS.mcpLoggingStream, { enabled: true })
+
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.mcpLoggingStream, handler)
+      void ipcRenderer.invoke(IPC_CHANNELS.mcpLoggingStream, { enabled: false })
+    }
+  },
   checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
   installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate),
   subscribeUpdateStatus: (listener) => {

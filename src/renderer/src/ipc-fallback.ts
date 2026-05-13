@@ -42,6 +42,8 @@ export function installIpcFallback(): void {
     listInflightOperations: () => Promise.resolve([]),
     cancelInflightOperation: notAvailable,
     subscribeInflightOperations: () => () => {},
+    setLoggingLevel: notAvailable,
+    subscribeLogNotifications: () => () => {},
     checkForUpdates: () => Promise.resolve(),
     installUpdate: () => Promise.resolve(),
     subscribeUpdateStatus: () => () => {}

@@ -20,6 +20,8 @@ import type {
   ElicitationRespondInput,
   InflightCancelInput,
   InflightOperationSummary,
+  LogNotification,
+  LoggingSetLevelInput,
   SamplingPendingRequest,
   SamplingRejectInput,
   SamplingRespondInput,
@@ -56,6 +58,11 @@ import {
   registerResourceUpdatedHandler
 } from './session/resource-subscriptions'
 import {
+  LogNotificationsBus,
+  registerLogNotificationHandler,
+  setLoggingLevel
+} from './session/logging'
+import {
   buildStatusFromPersisted,
   buildStatusFromRuntime,
   mapSessionSummary
@@ -73,6 +80,7 @@ export class SessionManager {
   private readonly elicitationStore = new PendingElicitationStore()
   private readonly inflightStore = new InflightOperationsStore()
   private readonly resourceSubscriptions = new ResourceSubscriptionsStore()
+  private readonly logNotifications = new LogNotificationsBus()
   private externalUrlOpener: ExternalUrlOpener = async () => {
     // Default no-op so unit tests don't need Electron's shell module.
   }
@@ -226,6 +234,7 @@ export class SessionManager {
       registerSamplingHandler(client, sessionId, this.samplingStore, () => randomUUID())
       registerElicitationHandler(client, sessionId, this.elicitationStore, () => randomUUID())
       registerResourceUpdatedHandler(client, sessionId, this.resourceSubscriptions)
+      registerLogNotificationHandler(client, sessionId, this.logNotifications)
 
       const runtime: RuntimeSession = {
         id: sessionId,
@@ -431,6 +440,23 @@ export class SessionManager {
       )
     }
     return discovery.complete(runtime.client, input)
+  }
+
+  onLogNotification(listener: (notification: LogNotification) => void): () => void {
+    return this.logNotifications.onNotification(listener)
+  }
+
+  async setLoggingLevel(input: LoggingSetLevelInput): Promise<{ ok: true }> {
+    const runtime = this.getReadyRuntimeSession(input.sessionId)
+    const caps = runtime.client.getServerCapabilities() as { logging?: unknown } | undefined
+    if (!caps || caps.logging === undefined) {
+      throw new AppError(
+        'LOGGING_NOT_SUPPORTED',
+        `Session ${input.sessionId} server does not advertise the logging capability`
+      )
+    }
+    await setLoggingLevel(runtime.client, input.level)
+    return { ok: true }
   }
 
   private async runTracked(

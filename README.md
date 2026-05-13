@@ -25,6 +25,7 @@ It is aimed at developers who build or integrate MCP servers and need reliable v
 | **Elicitation modal** | Servers calling `elicitation/create` get a modal with three actions (Accept/Decline/Cancel). Form mode renders the requested schema (string/enum/number/boolean/array); URL mode opens the destination via `shell.openExternal` only after an explicit Accept. |
 | **In-flight progress + cancellation** | Tool/resource/prompt invocations stream live progress (`notifications/progress`) into an in-app panel and can be cancelled mid-call — cancellation aborts the request and emits `notifications/cancelled` so the server can stop work. |
 | **Resource subscriptions** | Subscribe to resources advertising `resources.subscribe` capability and watch `notifications/resources/updated` live — entries show a "Live" badge with the last update timestamp, and the resource view auto-refetches while open. Subscriptions are session-scoped and drained on disconnect. |
+| **Server logging** | When a server advertises the `logging` capability, the Inspector exposes a Logs sub-panel showing live `notifications/message` entries with their RFC 5424 level, optional `logger` namespace, and pretty-printed `data`. A server-level selector calls `logging/setLevel`; an in-app filter further narrows the view by minimum severity. |
 | **In-app auto-update** | The app checks for new releases on launch and offers a one-click restart when an update is ready. |
 
 ## Installing a Release

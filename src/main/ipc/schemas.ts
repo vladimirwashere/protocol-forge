@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LOG_LEVELS } from '../../shared/ipc'
 import type {
   DeleteServerProfileInput,
   DiscoveryCallToolInput,
@@ -14,6 +15,8 @@ import type {
   InflightCancelInput,
   InflightListInput,
   InflightStreamInput,
+  LoggingSetLevelInput,
+  LoggingStreamInput,
   SamplingListPendingInput,
   SamplingRejectInput,
   SamplingRespondInput,
@@ -257,3 +260,14 @@ export const inflightStreamSchema = z.object({
   enabled: z.boolean()
 })
 assertEquals<Equals<z.infer<typeof inflightStreamSchema>, InflightStreamInput>>()
+
+export const loggingSetLevelSchema = z.object({
+  sessionId: z.string(),
+  level: z.enum(LOG_LEVELS)
+})
+assertEquals<Equals<z.infer<typeof loggingSetLevelSchema>, LoggingSetLevelInput>>()
+
+export const loggingStreamSchema = z.object({
+  enabled: z.boolean()
+})
+assertEquals<Equals<z.infer<typeof loggingStreamSchema>, LoggingStreamInput>>()

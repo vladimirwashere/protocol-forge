@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { SessionMessage, SessionStatus, SessionSummary } from '../../../../shared/ipc'
+import LogsPanel from './LogsPanel'
 
 type ProtocolInspectorProps = {
   sessionStatus: SessionStatus | null
@@ -399,6 +400,12 @@ function ProtocolInspector({
         )}
       </div>
       {sessionError ? <p className="mt-2 text-xs text-rose-400">{sessionError}</p> : null}
+      {sessionStatus ? (
+        <LogsPanel
+          sessionId={sessionStatus.sessionId}
+          loggingSupported={sessionStatus.serverCapabilities?.logging ?? false}
+        />
+      ) : null}
     </>
   )
 }
