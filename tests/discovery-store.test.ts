@@ -6,6 +6,7 @@ import type {
   DiscoveryPrompt,
   DiscoveryReadResourceInput,
   DiscoveryResource,
+  DiscoveryResourceTemplate,
   DiscoverySessionInput,
   DiscoveryTool,
   SessionStatus
@@ -18,6 +19,11 @@ type MockApi = {
   >
   listResources: ReturnType<
     typeof vi.fn<(input: DiscoverySessionInput) => Promise<{ resources: DiscoveryResource[] }>>
+  >
+  listResourceTemplates: ReturnType<
+    typeof vi.fn<
+      (input: DiscoverySessionInput) => Promise<{ resourceTemplates: DiscoveryResourceTemplate[] }>
+    >
   >
   listPrompts: ReturnType<
     typeof vi.fn<(input: DiscoverySessionInput) => Promise<{ prompts: DiscoveryPrompt[] }>>
@@ -46,6 +52,7 @@ const setupWindowApi = (): MockApi => {
   const api: MockApi = {
     listTools: vi.fn(async () => ({ tools: [] })),
     listResources: vi.fn(async () => ({ resources: [] })),
+    listResourceTemplates: vi.fn(async () => ({ resourceTemplates: [] })),
     listPrompts: vi.fn(async () => ({ prompts: [] })),
     callTool: vi.fn(async () => ({ result: { ok: true } })),
     readResource: vi.fn(async () => ({ result: { contents: [] } })),
@@ -103,6 +110,7 @@ describe('discovery-store', () => {
     expect(state.error).toBeNull()
     expect(api.listTools).not.toHaveBeenCalled()
     expect(api.listResources).not.toHaveBeenCalled()
+    expect(api.listResourceTemplates).not.toHaveBeenCalled()
     expect(api.listPrompts).not.toHaveBeenCalled()
   })
 

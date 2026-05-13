@@ -57,6 +57,7 @@ function App(): React.JSX.Element {
   const discoveryTab = useDiscoveryStore((state) => state.activeTab)
   const discoveryTools = useDiscoveryStore((state) => state.tools)
   const discoveryResources = useDiscoveryStore((state) => state.resources)
+  const discoveryResourceTemplates = useDiscoveryStore((state) => state.resourceTemplates)
   const discoveryPrompts = useDiscoveryStore((state) => state.prompts)
   const discoveryLoading = useDiscoveryStore((state) => state.loading)
   const discoveryError = useDiscoveryStore((state) => state.error)
@@ -313,6 +314,7 @@ function App(): React.JSX.Element {
                 activeTab={discoveryTab}
                 tools={discoveryTools}
                 resources={discoveryResources}
+                resourceTemplates={discoveryResourceTemplates}
                 prompts={discoveryPrompts}
                 loading={discoveryLoading}
                 error={discoveryError}

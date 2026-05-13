@@ -10,6 +10,7 @@ import type {
   DiscoveryGetPromptInput,
   DiscoveryListPromptsResponse,
   DiscoveryListResourcesResponse,
+  DiscoveryListResourceTemplatesResponse,
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
   DiscoveryReadResourceInput,
@@ -341,6 +342,10 @@ export class SessionManager {
 
   async listResources(sessionId: string): Promise<DiscoveryListResourcesResponse> {
     return discovery.listResources(this.getReadyRuntimeSession(sessionId).client)
+  }
+
+  async listResourceTemplates(sessionId: string): Promise<DiscoveryListResourceTemplatesResponse> {
+    return discovery.listResourceTemplates(this.getReadyRuntimeSession(sessionId).client)
   }
 
   async listPrompts(sessionId: string): Promise<DiscoveryListPromptsResponse> {

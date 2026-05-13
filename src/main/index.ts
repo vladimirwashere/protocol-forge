@@ -422,6 +422,12 @@ app.whenReady().then(() => {
     sessionManager.listResources(input.sessionId)
   )
 
+  registerIpcHandler(
+    IPC_CHANNELS.mcpDiscoveryListResourceTemplates,
+    discoverySessionSchema,
+    (input) => sessionManager.listResourceTemplates(input.sessionId)
+  )
+
   registerIpcHandler(IPC_CHANNELS.mcpDiscoveryListPrompts, discoverySessionSchema, (input) =>
     sessionManager.listPrompts(input.sessionId)
   )
@@ -558,6 +564,7 @@ app.on('will-quit', () => {
   ipcMain.removeHandler(IPC_CHANNELS.mcpSessionList)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListTools)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListResources)
+  ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListResourceTemplates)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryListPrompts)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryCallTool)
   ipcMain.removeHandler(IPC_CHANNELS.mcpDiscoveryReadResource)

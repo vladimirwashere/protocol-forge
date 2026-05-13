@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type {
   DiscoveryPrompt,
   DiscoveryResource,
+  DiscoveryResourceTemplate,
   DiscoveryTool,
   SessionStatus
 } from '../../../../shared/ipc'
@@ -21,6 +22,7 @@ type DiscoveryPanelProps = {
   activeTab: 'tools' | 'resources' | 'prompts'
   tools: DiscoveryTool[]
   resources: DiscoveryResource[]
+  resourceTemplates: DiscoveryResourceTemplate[]
   prompts: DiscoveryPrompt[]
   loading: boolean
   error: string | null
@@ -224,11 +226,160 @@ function PromptArgsEditor({
   )
 }
 
+function parseTemplatePlaceholders(uriTemplate: string): string[] {
+  const names: string[] = []
+  const seen = new Set<string>()
+  const regex = /\{([^}]+)\}/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(uriTemplate)) !== null) {
+    const raw = match[1]
+    if (raw === undefined) continue
+    // Drop RFC 6570 operator prefix and split on commas for the variable list.
+    const body = raw.replace(/^[+#./;?&]/, '')
+    for (const segment of body.split(',')) {
+      const name = segment.replace(/[*:].*$/, '').trim()
+      if (name.length === 0 || seen.has(name)) continue
+      seen.add(name)
+      names.push(name)
+    }
+  }
+  return names
+}
+
+function expandTemplateUri(uriTemplate: string, values: Record<string, string>): string {
+  return uriTemplate.replace(/\{([^}]+)\}/g, (_, raw: string) => {
+    const body = raw.replace(/^[+#./;?&]/, '')
+    const parts = body.split(',').map((segment) => {
+      const name = segment.replace(/[*:].*$/, '').trim()
+      const value = values[name] ?? ''
+      return encodeURIComponent(value)
+    })
+    return parts.join(',')
+  })
+}
+
+function ResourceTemplateForm({
+  template,
+  disabled,
+  sessionId,
+  completionsAvailable,
+  onSubmit
+}: {
+  template: DiscoveryResourceTemplate
+  disabled: boolean
+  sessionId: string | null
+  completionsAvailable: boolean
+  onSubmit: (uri: string) => void
+}): React.JSX.Element {
+  const placeholders = parseTemplatePlaceholders(template.uriTemplate)
+  const hasArgs = placeholders.length > 0
+
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [focused, setFocused] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({})
+  const [loadingField, setLoadingField] = useState<string | null>(null)
+  const requestSeq = useRef(0)
+
+  const canComplete = completionsAvailable && sessionId !== null
+
+  useEffect(() => {
+    if (!canComplete || focused === null) return
+    const argumentName = focused
+    const argumentValue = values[argumentName] ?? ''
+
+    const requestId = ++requestSeq.current
+    const timer = window.setTimeout(() => {
+      setLoadingField(argumentName)
+      const otherArgs = Object.fromEntries(
+        Object.entries(values).filter(([key, val]) => key !== argumentName && val.length > 0)
+      )
+      window.api
+        .complete({
+          sessionId: sessionId!,
+          ref: { type: 'ref/resource', uri: template.uriTemplate },
+          argument: { name: argumentName, value: argumentValue },
+          ...(Object.keys(otherArgs).length > 0 ? { context: { arguments: otherArgs } } : {})
+        })
+        .then((result) => {
+          if (requestId !== requestSeq.current) return
+          setSuggestions((prev) => ({ ...prev, [argumentName]: result.values }))
+        })
+        .catch(() => {
+          if (requestId !== requestSeq.current) return
+          setSuggestions((prev) => ({ ...prev, [argumentName]: [] }))
+        })
+        .finally(() => {
+          if (requestId !== requestSeq.current) return
+          setLoadingField(null)
+        })
+    }, 200)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [canComplete, focused, template.uriTemplate, sessionId, values])
+
+  if (!hasArgs) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          onSubmit(template.uriTemplate)
+        }}
+        className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 disabled:opacity-60"
+      >
+        Read Resource
+      </button>
+    )
+  }
+
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSubmit(expandTemplateUri(template.uriTemplate, values))
+      }}
+    >
+      {placeholders.map((name) => (
+        <PromptArgumentField
+          key={name}
+          argument={{ name, required: true }}
+          value={values[name] ?? ''}
+          onChange={(next) => {
+            setValues((prev) => ({ ...prev, [name]: next }))
+          }}
+          onFocus={() => {
+            setFocused(name)
+          }}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setFocused((current) => (current === name ? null : current))
+            }, 100)
+          }}
+          suggestions={suggestions[name] ?? null}
+          showSuggestions={canComplete && focused === name}
+          loading={loadingField === name}
+        />
+      ))}
+      <button
+        type="submit"
+        disabled={disabled}
+        className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 disabled:opacity-60"
+      >
+        Read Resource
+      </button>
+    </form>
+  )
+}
+
 function DiscoveryPanel({
   sessionStatus,
   activeTab,
   tools,
   resources,
+  resourceTemplates,
   prompts,
   loading,
   error,
@@ -339,28 +490,72 @@ function DiscoveryPanel({
       ) : null}
 
       {isReady && activeTab === 'resources' ? (
-        <div className="mt-3 max-h-72 space-y-2 overflow-auto rounded border border-slate-800 bg-slate-950/50 p-3">
-          {resources.length === 0 ? (
-            <p className="text-xs text-slate-500">No resources reported by this server.</p>
-          ) : (
-            resources.map((resource) => (
-              <div
-                key={resource.uri}
-                className="rounded border border-slate-800 bg-slate-900/40 p-2"
-              >
-                <p className="text-xs font-medium text-slate-200">{resource.name}</p>
-                <p className="mt-1 break-all text-[11px] text-slate-500">{resource.uri}</p>
-                <button
-                  className="mt-2 rounded border border-slate-700 px-2 py-1 text-xs text-slate-200"
-                  onClick={() => {
-                    onReadResource(resource.uri)
-                  }}
+        <div className="mt-3 max-h-72 space-y-4 overflow-auto rounded border border-slate-800 bg-slate-950/50 p-3">
+          <section className="space-y-2">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Resources
+            </h4>
+            {resources.length === 0 ? (
+              <p className="text-xs text-slate-500">No resources reported by this server.</p>
+            ) : (
+              resources.map((resource) => (
+                <div
+                  key={resource.uri}
+                  className="rounded border border-slate-800 bg-slate-900/40 p-2"
                 >
-                  Read Resource
-                </button>
-              </div>
-            ))
-          )}
+                  <p className="text-xs font-medium text-slate-200">{resource.name}</p>
+                  <p className="mt-1 break-all text-[11px] text-slate-500">{resource.uri}</p>
+                  <button
+                    className="mt-2 rounded border border-slate-700 px-2 py-1 text-xs text-slate-200"
+                    onClick={() => {
+                      onReadResource(resource.uri)
+                    }}
+                  >
+                    Read Resource
+                  </button>
+                </div>
+              ))
+            )}
+          </section>
+
+          <section className="space-y-2">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Templates
+            </h4>
+            {resourceTemplates.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                No resource templates reported by this server.
+              </p>
+            ) : (
+              resourceTemplates.map((template) => (
+                <div
+                  key={template.uriTemplate}
+                  className="rounded border border-slate-800 bg-slate-900/40 p-2"
+                >
+                  <p className="text-xs font-medium text-slate-200">
+                    {template.title ?? template.name}
+                  </p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-slate-500">
+                    {template.uriTemplate}
+                  </p>
+                  {template.description ? (
+                    <p className="mt-1 text-[11px] text-slate-500">{template.description}</p>
+                  ) : null}
+                  <div className="mt-2">
+                    <ResourceTemplateForm
+                      template={template}
+                      disabled={loading}
+                      sessionId={sessionId}
+                      completionsAvailable={completionsAvailable}
+                      onSubmit={(uri) => {
+                        onReadResource(uri)
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
         </div>
       ) : null}
 

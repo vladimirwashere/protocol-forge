@@ -7,6 +7,7 @@ import type {
   DiscoveryGetPromptInput,
   DiscoveryListPromptsResponse,
   DiscoveryListResourcesResponse,
+  DiscoveryListResourceTemplatesResponse,
   DiscoveryListToolsResponse,
   DiscoveryOperationResult,
   DiscoveryReadResourceInput,
@@ -123,6 +124,33 @@ export async function listResources(client: Client): Promise<DiscoveryListResour
       return mapped
     })
   }
+}
+
+export async function listResourceTemplates(
+  client: Client
+): Promise<DiscoveryListResourceTemplatesResponse> {
+  const listed = await client.listResourceTemplates()
+
+  const projected: DiscoveryListResourceTemplatesResponse = { resourceTemplates: [] }
+  if (!Array.isArray(listed.resourceTemplates)) return projected
+
+  for (const entry of listed.resourceTemplates) {
+    if (entry === null || typeof entry !== 'object') continue
+    const source = entry as Record<string, unknown>
+    if (typeof source.uriTemplate !== 'string' || typeof source.name !== 'string') continue
+    const mapped: DiscoveryListResourceTemplatesResponse['resourceTemplates'][number] = {
+      uriTemplate: source.uriTemplate,
+      name: source.name
+    }
+    if (typeof source.title === 'string') mapped.title = source.title
+    if (typeof source.description === 'string') mapped.description = source.description
+    if (typeof source.mimeType === 'string') mapped.mimeType = source.mimeType
+    const icons = projectToolIcons(source.icons)
+    if (icons) mapped.icons = icons
+    projected.resourceTemplates.push(mapped)
+  }
+
+  return projected
 }
 
 export async function listPrompts(client: Client): Promise<DiscoveryListPromptsResponse> {

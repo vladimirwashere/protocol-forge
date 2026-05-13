@@ -23,6 +23,7 @@ export function installIpcFallback(): void {
     listSessions: () => Promise.resolve([]),
     listTools: () => Promise.resolve({ tools: [] }),
     listResources: () => Promise.resolve({ resources: [] }),
+    listResourceTemplates: () => Promise.resolve({ resourceTemplates: [] }),
     listPrompts: () => Promise.resolve({ prompts: [] }),
     callTool: notAvailable,
     readResource: notAvailable,

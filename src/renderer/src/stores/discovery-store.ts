@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   DiscoveryPrompt,
   DiscoveryResource,
+  DiscoveryResourceTemplate,
   DiscoveryTool,
   SessionStatus
 } from '../../../shared/ipc'
@@ -12,6 +13,7 @@ type DiscoveryStoreState = {
   activeTab: DiscoveryTab
   tools: DiscoveryTool[]
   resources: DiscoveryResource[]
+  resourceTemplates: DiscoveryResourceTemplate[]
   prompts: DiscoveryPrompt[]
   activeResult: unknown | null
   activeResultTitle: string | null
@@ -38,6 +40,7 @@ type DiscoveryStoreState = {
 const clearData = {
   tools: [] as DiscoveryTool[],
   resources: [] as DiscoveryResource[],
+  resourceTemplates: [] as DiscoveryResourceTemplate[],
   prompts: [] as DiscoveryPrompt[]
 }
 
@@ -77,15 +80,17 @@ export const useDiscoveryStore = create<DiscoveryStoreState>((set, get) => ({
     set({ loading: true, error: null })
 
     try {
-      const [tools, resources, prompts] = await Promise.all([
+      const [tools, resources, resourceTemplates, prompts] = await Promise.all([
         window.api.listTools({ sessionId: sessionStatus.sessionId }),
         window.api.listResources({ sessionId: sessionStatus.sessionId }),
+        window.api.listResourceTemplates({ sessionId: sessionStatus.sessionId }),
         window.api.listPrompts({ sessionId: sessionStatus.sessionId })
       ])
 
       set({
         tools: tools.tools,
         resources: resources.resources,
+        resourceTemplates: resourceTemplates.resourceTemplates,
         prompts: prompts.prompts,
         loading: false
       })

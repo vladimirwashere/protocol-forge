@@ -28,6 +28,8 @@ const api: AppApi = {
   listSessions: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpSessionList, input),
   listTools: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListTools, input),
   listResources: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListResources, input),
+  listResourceTemplates: (input) =>
+    ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListResourceTemplates, input),
   listPrompts: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryListPrompts, input),
   callTool: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryCallTool, input),
   readResource: (input) => ipcRenderer.invoke(IPC_CHANNELS.mcpDiscoveryReadResource, input),

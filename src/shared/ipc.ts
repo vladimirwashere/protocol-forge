@@ -12,6 +12,7 @@ export const IPC_CHANNELS = {
   mcpSessionList: 'mcp-session:list',
   mcpDiscoveryListTools: 'mcp-discovery:list-tools',
   mcpDiscoveryListResources: 'mcp-discovery:list-resources',
+  mcpDiscoveryListResourceTemplates: 'mcp-discovery:list-resource-templates',
   mcpDiscoveryListPrompts: 'mcp-discovery:list-prompts',
   mcpDiscoveryCallTool: 'mcp-discovery:call-tool',
   mcpDiscoveryReadResource: 'mcp-discovery:read-resource',
@@ -233,6 +234,15 @@ export type DiscoveryResource = {
   mimeType?: string
 }
 
+export type DiscoveryResourceTemplate = {
+  uriTemplate: string
+  name: string
+  title?: string
+  description?: string
+  mimeType?: string
+  icons?: ToolIcon[]
+}
+
 export type DiscoveryPromptArgument = {
   name: string
   description?: string
@@ -251,6 +261,10 @@ export type DiscoveryListToolsResponse = {
 
 export type DiscoveryListResourcesResponse = {
   resources: DiscoveryResource[]
+}
+
+export type DiscoveryListResourceTemplatesResponse = {
+  resourceTemplates: DiscoveryResourceTemplate[]
 }
 
 export type DiscoveryListPromptsResponse = {
@@ -421,6 +435,9 @@ export type AppApi = {
   listSessions: (input?: SessionListInput) => Promise<SessionSummary[]>
   listTools: (input: DiscoverySessionInput) => Promise<DiscoveryListToolsResponse>
   listResources: (input: DiscoverySessionInput) => Promise<DiscoveryListResourcesResponse>
+  listResourceTemplates: (
+    input: DiscoverySessionInput
+  ) => Promise<DiscoveryListResourceTemplatesResponse>
   listPrompts: (input: DiscoverySessionInput) => Promise<DiscoveryListPromptsResponse>
   callTool: (input: DiscoveryCallToolInput) => Promise<DiscoveryOperationResult>
   readResource: (input: DiscoveryReadResourceInput) => Promise<DiscoveryOperationResult>
