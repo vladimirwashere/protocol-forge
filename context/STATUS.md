@@ -79,6 +79,8 @@ M13 complete. Next: pick up the deferred M12 release wrap-up (version bump, CHAN
 
 ## Completed This Session (Unreleased)
 
+- Cleared the `tmp` path-traversal advisory (GHSA-ph9p-34f9-6g65) in the build toolchain by refreshing the lockfile and bumping the `electron-builder` range to `^26.8.1` in `package.json`, which now resolves `tmp-promise -> tmp@0.2.6` (previously `0.2.5`). `pnpm audit` no longer reports the high-severity path traversal issue.
+
 - Refreshed dependency resolution without overrides: updated the lockfile so the `@modelcontextprotocol/sdk` dependency chain no longer resolves `ip-address@10.1.0` (now `10.2.0` via `express-rate-limit@8.5.2`) and removed the stale `pnpm.overrides` block from `package.json` (pnpm 11 ignores it).
 
 - Responsive AppShell layout: replaced the draggable inspector splitter with preset-based drawer control (collapsed/split/expanded buttons on wide viewports ≥900px, and a three-tab single-column layout below 900px for Servers/Workspace/Inspector). Added `useIsNarrow` hook and updated ui-store to persist `inspectorView` + `narrowTab` state. Fixes content overflow behind siblings by adding `min-h-0 overflow-y-auto` to sidebar and main regions.
