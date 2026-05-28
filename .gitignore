@@ -7,3 +7,4 @@ out
 CLAUDE.md
 .github/copilot-instructions.md
 .claude/
+.pnpm-store/

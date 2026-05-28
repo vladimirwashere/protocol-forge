@@ -79,6 +79,8 @@ M13 complete. Next: pick up the deferred M12 release wrap-up (version bump, CHAN
 
 ## Completed This Session (Unreleased)
 
+- Cleared all remaining `pnpm audit` findings without overrides. Dependency refresh kept `eslint` on the v9 line for plugin compatibility while updating `jsdom` to `^29.1.1` (and `vitest` to `^4.1.7`) to remove the vulnerable `ws@8.19.0` chain, and refreshed lockfile transitives so `brace-expansion` resolves to patched versions (`1.1.15`, `2.1.1`, `5.0.6`). `pnpm audit` now reports no known vulnerabilities.
+
 - Cleared the `tmp` path-traversal advisory (GHSA-ph9p-34f9-6g65) in the build toolchain by refreshing the lockfile and bumping the `electron-builder` range to `^26.8.1` in `package.json`, which now resolves `tmp-promise -> tmp@0.2.6` (previously `0.2.5`). `pnpm audit` no longer reports the high-severity path traversal issue.
 
 - Refreshed dependency resolution without overrides: updated the lockfile so the `@modelcontextprotocol/sdk` dependency chain no longer resolves `ip-address@10.1.0` (now `10.2.0` via `express-rate-limit@8.5.2`) and removed the stale `pnpm.overrides` block from `package.json` (pnpm 11 ignores it).
