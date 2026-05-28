@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-05-13 (M13.6 server logging done — M13 complete)
+**Last updated:** 2026-05-28 (resolved ip-address advisory without overrides)
 
 ## Completed Milestones
 
@@ -79,7 +79,7 @@ M13 complete. Next: pick up the deferred M12 release wrap-up (version bump, CHAN
 
 ## Completed This Session (Unreleased)
 
-- Pinned transitive `ip-address` to `10.1.1` via a root pnpm override and refreshed `pnpm-lock.yaml`, removing the vulnerable `10.1.0` resolution from both runtime and build-time dependency trees.
+- Refreshed dependency resolution without overrides: updated the lockfile so the `@modelcontextprotocol/sdk` dependency chain no longer resolves `ip-address@10.1.0` (now `10.2.0` via `express-rate-limit@8.5.2`) and removed the stale `pnpm.overrides` block from `package.json` (pnpm 11 ignores it).
 
 - Responsive AppShell layout: replaced the draggable inspector splitter with preset-based drawer control (collapsed/split/expanded buttons on wide viewports ≥900px, and a three-tab single-column layout below 900px for Servers/Workspace/Inspector). Added `useIsNarrow` hook and updated ui-store to persist `inspectorView` + `narrowTab` state. Fixes content overflow behind siblings by adding `min-h-0 overflow-y-auto` to sidebar and main regions.
 - Fixed status bar overflow on long session IDs and error strings: added `truncate` and `min-w-0` overflow guards; removed duplicate `border-t` (AppShell footer already has one).
