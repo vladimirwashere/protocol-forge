@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-05-28 (resolved ip-address advisory without overrides)
+**Last updated:** 2026-08-03 (pinned form-data to 4.0.6 via pnpm-workspace.yaml override)
 
 ## Completed Milestones
 
@@ -78,6 +78,8 @@ M13 complete. Next: pick up the deferred M12 release wrap-up (version bump, CHAN
 - Refreshed docs (`README.md`, `docs/architecture.md`, `docs/development.md`, `SECURITY.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) to drop SSE from supported transports.
 
 ## Completed This Session (Unreleased)
+
+- Fixed GHSA form-data CRLF injection advisory (dependabot alert #86, CWE-93): `form-data@4.0.5` is a transitive of `electron-builder -> electron-publish`, which declares `^4.0.5` — Dependabot couldn't bump it alone since electron-builder itself hasn't released a newer pin, so this uses a `pnpm-workspace.yaml` `overrides:` entry (`form-data: 4.0.6`) to force the patched resolution within that already-compatible range. Confirmed via `pnpm --version` / testing that this pnpm version (11.1.1) reads workspace-level `overrides:` from `pnpm-workspace.yaml`, not `pnpm.overrides` in `package.json` (that key is silently ignored with a warning) — same relocation pattern already noted for `allowBuilds`/`onlyBuiltDependencies`. Verified with a clean `rm -rf node_modules && pnpm install --frozen-lockfile`; full validation suite green.
 
 - Cleared all remaining `pnpm audit` findings without overrides. Dependency refresh kept `eslint` on the v9 line for plugin compatibility while updating `jsdom` to `^29.1.1` (and `vitest` to `^4.1.7`) to remove the vulnerable `ws@8.19.0` chain, and refreshed lockfile transitives so `brace-expansion` resolves to patched versions (`1.1.15`, `2.1.1`, `5.0.6`). `pnpm audit` now reports no known vulnerabilities.
 
