@@ -1,6 +1,6 @@
 # Protocol Forge — Current Status
 
-**Last updated:** 2026-08-03 (pinned form-data to 4.0.6 via pnpm-workspace.yaml override)
+**Last updated:** 2026-08-04 (pinned tmp to 0.2.7 via pnpm-workspace.yaml override)
 
 ## Completed Milestones
 
@@ -80,6 +80,8 @@ M13 complete. Next: pick up the deferred M12 release wrap-up (version bump, CHAN
 ## Completed This Session (Unreleased)
 
 - Fixed GHSA form-data CRLF injection advisory (dependabot alert #86, CWE-93): `form-data@4.0.5` is a transitive of `electron-builder -> electron-publish`, which declares `^4.0.5` — Dependabot couldn't bump it alone since electron-builder itself hasn't released a newer pin, so this uses a `pnpm-workspace.yaml` `overrides:` entry (`form-data: 4.0.6`) to force the patched resolution within that already-compatible range. Confirmed via `pnpm --version` / testing that this pnpm version (11.1.1) reads workspace-level `overrides:` from `pnpm-workspace.yaml`, not `pnpm.overrides` in `package.json` (that key is silently ignored with a warning) — same relocation pattern already noted for `allowBuilds`/`onlyBuiltDependencies`. Verified with a clean `rm -rf node_modules && pnpm install --frozen-lockfile`; full validation suite green.
+
+- Fixed GHSA-7c78-jf6q-g5cm (`tmp` `_assertPath` type-confusion path-traversal bypass, dependabot alert #76): `tmp@0.2.6` is a transitive of `electron-builder -> tmp-promise -> tmp`, and Dependabot flagged it as stuck because `electron-builder` hasn't republished a pin above `0.2.6` yet. Same pattern as the form-data fix above: added a `pnpm-workspace.yaml` `overrides:` entry (`tmp: 0.2.7`) to force the patched resolution. This app never forwards untrusted request data (HTTP body/query params) into `tmp`'s `prefix`/`postfix`/`template` options — `electron-builder` only uses it internally during packaging — so the bypass wasn't reachable at runtime, but the pin closes the advisory regardless. Verified with `pnpm install`, confirmed `tmp@0.2.7` in the lockfile, and full validation suite (lint/typecheck/test/build) green.
 
 - Cleared all remaining `pnpm audit` findings without overrides. Dependency refresh kept `eslint` on the v9 line for plugin compatibility while updating `jsdom` to `^29.1.1` (and `vitest` to `^4.1.7`) to remove the vulnerable `ws@8.19.0` chain, and refreshed lockfile transitives so `brace-expansion` resolves to patched versions (`1.1.15`, `2.1.1`, `5.0.6`). `pnpm audit` now reports no known vulnerabilities.
 
